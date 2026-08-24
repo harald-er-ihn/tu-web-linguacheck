@@ -1,6 +1,7 @@
 """Erkennung von Links zu Sprachvarianten in HTML-Dokumenten."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
@@ -98,3 +99,8 @@ def merge_language_links(language_links: list[LanguageLink]) -> list[LanguageLin
             merged_links[key] = language_link
 
     return list(merged_links.values())
+
+
+def resolve_language_link(base_url: str, language_link: LanguageLink) -> LanguageLink:
+    """Löst das Ziel eines Sprachlinks gegen eine Basis-URL auf."""
+    return replace(language_link, href=urljoin(base_url, language_link.href))

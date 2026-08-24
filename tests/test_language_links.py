@@ -5,6 +5,7 @@ from tu_web_linguacheck.language_links import (
     find_hreflang_links,
     find_language_switcher_links,
     merge_language_links,
+    resolve_language_link,
 )
 
 
@@ -178,3 +179,59 @@ def test_keeps_language_links_with_different_targets() -> None:
     merged_links = merge_language_links(links)
 
     assert merged_links == links
+
+
+def test_resolves_domain_relative_language_link() -> None:
+    """Ein domain-relativer Sprachlink wird gegen die Basis-URL aufgelöst."""
+    language_link = LanguageLink(
+        href="/en/diversity/diversity-month/",
+        language="en",
+        detection_method="hreflang",
+    )
+
+    resolved_link = resolve_language_link(
+        "https://stabsstelle-cfv.tu-dortmund.de/vielfalt/diversity-monat/",
+        language_link,
+    )
+
+    assert resolved_link == LanguageLink(
+        href="https://stabsstelle-cfv.tu-dortmund.de/en/diversity/diversity-month/",
+        language="en",
+        detection_method="hreflang",
+    )
+
+
+def test_resolves_path_relative_language_link() -> None:
+    """Ein pfad-relativer Sprachlink wird gegen den aktuellen Pfad aufgelöst."""
+    language_link = LanguageLink(
+        href="en/forschung/",
+        language="en",
+        detection_method="language_switcher",
+    )
+
+    resolved_link = resolve_language_link(
+        "https://cs.tu-dortmund.de/forschung/",
+        language_link,
+    )
+
+    assert resolved_link == LanguageLink(
+        href="https://cs.tu-dortmund.de/forschung/en/forschung/",
+        language="en",
+        detection_method="language_switcher",
+    )
+
+
+def test_keeps_absolute_language_link() -> None:
+    """Ein absoluter Sprachlink bleibt unverändert."""
+    language_link = LanguageLink(
+        href="https://cs.tu-dortmund.de/en/forschung/",
+        language="en",
+        detection_method="hreflang",
+    )
+
+    resolved_link = resolve_language_link(
+        "https://cs.tu-dortmund.de/forschung/",
+        language_link,
+    )
+
+    assert resolved_link == language_link
