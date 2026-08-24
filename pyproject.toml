@@ -13,6 +13,7 @@ authors = [
   { name = "Dr. Harald Hutter" },
 ]
 dependencies = [
+  "beautifulsoup4>=4.12",
   "typer>=0.12",
 ]
 
