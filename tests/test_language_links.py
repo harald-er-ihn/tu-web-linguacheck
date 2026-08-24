@@ -4,6 +4,7 @@ from tu_web_linguacheck.language_links import (
     LanguageLink,
     find_hreflang_links,
     find_language_switcher_links,
+    merge_language_links,
 )
 
 
@@ -131,3 +132,49 @@ def test_normalizes_regional_hreflang_codes() -> None:
             detection_method="hreflang",
         ),
     ]
+
+
+def test_prefers_hreflang_over_visible_language_switcher() -> None:
+    """Hreflang hat Vorrang vor einem identischen sichtbaren Sprachumschalter."""
+    links = [
+        LanguageLink(
+            href="/en/page/",
+            language="en",
+            detection_method="language_switcher",
+        ),
+        LanguageLink(
+            href="/en/page/",
+            language="en",
+            detection_method="hreflang",
+        ),
+    ]
+
+    merged_links = merge_language_links(links)
+
+    assert merged_links == [
+        LanguageLink(
+            href="/en/page/",
+            language="en",
+            detection_method="hreflang",
+        )
+    ]
+
+
+def test_keeps_language_links_with_different_targets() -> None:
+    """Unterschiedliche Sprachziele bleiben als eigene Einträge erhalten."""
+    links = [
+        LanguageLink(
+            href="/de/page/",
+            language="de",
+            detection_method="hreflang",
+        ),
+        LanguageLink(
+            href="/en/page/",
+            language="en",
+            detection_method="language_switcher",
+        ),
+    ]
+
+    merged_links = merge_language_links(links)
+
+    assert merged_links == links

@@ -67,3 +67,34 @@ def find_hreflang_links(html: str) -> list[LanguageLink]:
             )
 
     return language_links
+
+
+_DETECTION_METHOD_PRIORITIES = {
+    "language_switcher": 1,
+    "hreflang": 2,
+}
+
+
+def merge_language_links(language_links: list[LanguageLink]) -> list[LanguageLink]:
+    """Führt doppelte Sprachlinks zusammen und bevorzugt verlässlichere Quellen."""
+    merged_links: dict[tuple[str, str], LanguageLink] = {}
+
+    for language_link in language_links:
+        key = (language_link.href, language_link.language)
+        existing_link = merged_links.get(key)
+
+        if existing_link is None:
+            merged_links[key] = language_link
+            continue
+
+        existing_priority = _DETECTION_METHOD_PRIORITIES.get(
+            existing_link.detection_method, 0
+        )
+        new_priority = _DETECTION_METHOD_PRIORITIES.get(
+            language_link.detection_method, 0
+        )
+
+        if new_priority > existing_priority:
+            merged_links[key] = language_link
+
+    return list(merged_links.values())
