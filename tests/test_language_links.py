@@ -57,7 +57,7 @@ def test_ignores_unrelated_links() -> None:
 
     links = find_language_switcher_links(html)
 
-    assert links == []
+    assert not links
 
 
 def test_finds_hreflang_alternatives() -> None:
@@ -100,7 +100,7 @@ def test_ignores_non_language_hreflang_links() -> None:
 
     links = find_hreflang_links(html)
 
-    assert links == []
+    assert not links
 
 
 def test_normalizes_regional_hreflang_codes() -> None:
