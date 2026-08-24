@@ -9,6 +9,11 @@ app = typer.Typer(
 
 
 @app.command()
-def main() -> None:
+def run() -> None:
     """Startet tu-web-linguacheck."""
     typer.echo("tu-web-linguacheck ist bereit.")
+
+
+def main() -> None:
+    """Startet die Kommandozeilenschnittstelle."""
+    app()
