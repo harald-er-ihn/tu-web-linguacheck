@@ -8,7 +8,7 @@ _LANGUAGE_BY_LINK_TEXT = {
     "en": "en",
     "english": "en",
 }
-_SUPPORTED_HREFLANG_CODES = {"de", "en"}
+_SUPPORTED_LANGUAGE_CODES = {"de", "en"}
 
 
 def find_language_switcher_links(html: str) -> list[tuple[str, str]]:
@@ -37,9 +37,10 @@ def find_hreflang_links(html: str) -> list[tuple[str, str]]:
         if "alternate" not in relations:
             continue
 
-        language = link.get("hreflang", "").casefold()
+        hreflang = link.get("hreflang", "").casefold()
+        language = hreflang.split("-", maxsplit=1)[0]
 
-        if language in _SUPPORTED_HREFLANG_CODES:
+        if language in _SUPPORTED_LANGUAGE_CODES:
             language_links.append((link["href"], language))
 
     return language_links

@@ -79,3 +79,22 @@ def test_ignores_non_language_hreflang_links() -> None:
     links = find_hreflang_links(html)
 
     assert links == []
+
+
+def test_normalizes_regional_hreflang_codes() -> None:
+    """Regionale deutsche und englische hreflang-Codes werden normalisiert."""
+    html = """
+    <head>
+      <link rel="alternate" hreflang="de-DE" href="/de/" />
+      <link rel="alternate" hreflang="en-US" href="/en-us/" />
+      <link rel="alternate" hreflang="en-GB" href="/en-gb/" />
+    </head>
+    """
+
+    links = find_hreflang_links(html)
+
+    assert links == [
+        ("/de/", "de"),
+        ("/en-us/", "en"),
+        ("/en-gb/", "en"),
+    ]
