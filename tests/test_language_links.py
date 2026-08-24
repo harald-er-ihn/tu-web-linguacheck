@@ -1,6 +1,7 @@
 """Tests für die Erkennung von Sprachvarianten in HTML-Dokumenten."""
 
 from tu_web_linguacheck.language_links import (
+    LanguageLink,
     find_hreflang_links,
     find_language_switcher_links,
 )
@@ -16,7 +17,13 @@ def test_finds_english_language_switcher() -> None:
 
     links = find_language_switcher_links(html)
 
-    assert links == [("/en/diversity/diversity-month/", "en")]
+    assert links == [
+        LanguageLink(
+            href="/en/diversity/diversity-month/",
+            language="en",
+            detection_method="language_switcher",
+        )
+    ]
 
 
 def test_finds_german_language_switcher() -> None:
@@ -29,7 +36,13 @@ def test_finds_german_language_switcher() -> None:
 
     links = find_language_switcher_links(html)
 
-    assert links == [("/vielfalt/diversity-monat/", "de")]
+    assert links == [
+        LanguageLink(
+            href="/vielfalt/diversity-monat/",
+            language="de",
+            detection_method="language_switcher",
+        )
+    ]
 
 
 def test_ignores_unrelated_links() -> None:
@@ -62,8 +75,16 @@ def test_finds_hreflang_alternatives() -> None:
     links = find_hreflang_links(html)
 
     assert links == [
-        ("/vielfalt/diversity-monat/", "de"),
-        ("/en/diversity/diversity-month/", "en"),
+        LanguageLink(
+            href="/vielfalt/diversity-monat/",
+            language="de",
+            detection_method="hreflang",
+        ),
+        LanguageLink(
+            href="/en/diversity/diversity-month/",
+            language="en",
+            detection_method="hreflang",
+        ),
     ]
 
 
@@ -94,7 +115,19 @@ def test_normalizes_regional_hreflang_codes() -> None:
     links = find_hreflang_links(html)
 
     assert links == [
-        ("/de/", "de"),
-        ("/en-us/", "en"),
-        ("/en-gb/", "en"),
+        LanguageLink(
+            href="/de/",
+            language="de",
+            detection_method="hreflang",
+        ),
+        LanguageLink(
+            href="/en-us/",
+            language="en",
+            detection_method="hreflang",
+        ),
+        LanguageLink(
+            href="/en-gb/",
+            language="en",
+            detection_method="hreflang",
+        ),
     ]
