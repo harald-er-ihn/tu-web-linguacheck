@@ -8,6 +8,11 @@ app = typer.Typer(
 )
 
 
+@app.callback()
+def callback() -> None:
+    """Stellt die Befehlsgruppe bereit."""
+
+
 @app.command()
 def run() -> None:
     """Startet tu-web-linguacheck."""
