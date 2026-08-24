@@ -30,3 +30,7 @@ reports/*
 .vscode/
 .idea/
 .DS_Store
+
+# Local configuration files
+config/local.yaml
+config/*.local.yaml

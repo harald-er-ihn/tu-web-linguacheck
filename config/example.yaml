@@ -1,0 +1,41 @@
+# Beispielkonfiguration für tu-web-linguacheck.
+#
+# Diese Datei wird im aktuellen Projektstand noch nicht eingelesen.
+# Sie dokumentiert das geplante Konfigurationsformat.
+
+profile: generic-de
+
+crawl:
+  # Nur diese Domains dürfen gecrawlt werden.
+  allowed_domains:
+    - example.org
+
+  # Begrenzungen für einen vorsichtigen Crawl.
+  max_depth: 1
+  max_pages: 10
+  requests_per_second: 1.0
+
+  # robots.txt wird standardmäßig beachtet.
+  obey_robots_txt: true
+
+  # URL-Fragmente und bekannte Tracking-Parameter werden entfernt.
+  strip_fragments: true
+  tracking_parameters:
+    - fbclid
+    - gclid
+    - mc_cid
+    - mc_eid
+    - utm_campaign
+    - utm_content
+    - utm_medium
+    - utm_source
+    - utm_term
+
+  # Diese URL-Muster werden nicht gecrawlt.
+  exclude_patterns:
+    - '\.(?:7z|avi|bmp|csv|docx?|gz|ico|jpe?g|mov|mp3|mp4|pdf|png|pptx?|rar|svg|tar|tgz|webp|xlsx?|zip)(?:$|[?#])'
+    - '/wp-admin(?:/|$)'
+    - '/wp-login\.php(?:$|[?#])'
+
+check:
+  language: de-DE
