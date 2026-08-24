@@ -1,6 +1,9 @@
-"""Tests für die Erkennung von Sprachumschaltern."""
+"""Tests für die Erkennung von Sprachvarianten in HTML-Dokumenten."""
 
-from tu_web_linguacheck.language_links import find_language_switcher_links
+from tu_web_linguacheck.language_links import (
+    find_hreflang_links,
+    find_language_switcher_links,
+)
 
 
 def test_finds_english_language_switcher() -> None:
@@ -39,5 +42,40 @@ def test_ignores_unrelated_links() -> None:
     """
 
     links = find_language_switcher_links(html)
+
+    assert links == []
+
+
+def test_finds_hreflang_alternatives() -> None:
+    """Hreflang-Alternativen werden mit URL und Sprachcode erkannt."""
+    html = """
+    <head>
+      <link rel="alternate" hreflang="de" href="/vielfalt/diversity-monat/" />
+      <link
+        rel="alternate"
+        hreflang="en"
+        href="/en/diversity/diversity-month/"
+      />
+    </head>
+    """
+
+    links = find_hreflang_links(html)
+
+    assert links == [
+        ("/vielfalt/diversity-monat/", "de"),
+        ("/en/diversity/diversity-month/", "en"),
+    ]
+
+
+def test_ignores_non_language_hreflang_links() -> None:
+    """x-default und Links ohne alternate-Relation werden ignoriert."""
+    html = """
+    <head>
+      <link rel="alternate" hreflang="x-default" href="/" />
+      <link rel="canonical" hreflang="en" href="/en/" />
+    </head>
+    """
+
+    links = find_hreflang_links(html)
 
     assert links == []
