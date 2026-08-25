@@ -1,0 +1,34 @@
+# Abstrakter Katalog fachlicher Quellen für TU-spezifische Regeln.
+#
+# Originaldokumente und detaillierte Quellenangaben liegen ausschließlich im
+# privaten, zugelassenen Quellenbestand. Diese Datei enthält keine
+# Zugangsinformationen oder geschützten Dokumentinhalte.
+
+sources:
+  - id: tu-de-inclusive-language
+    access: restricted
+    original_location: private_source_repository
+    rule_areas:
+      - inclusive_language
+      - gender_star
+      - gender_colon
+      - neutral_forms
+    default_authority: recommended
+
+  - id: tu-de-respectful-address
+    access: restricted
+    original_location: private_source_repository
+    rule_areas:
+      - salutations
+      - pronouns
+      - email_signatures
+    default_authority: voluntary
+
+  - id: tu-en-styleguide
+    access: restricted
+    original_location: private_source_repository
+    rule_areas:
+      - american_english
+      - university_terminology
+      - inclusive_language
+    default_authority: review_required
