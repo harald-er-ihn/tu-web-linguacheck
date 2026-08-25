@@ -8,3 +8,5 @@ cd "$(dirname "$0")"
 .venv/bin/ruff format --check .
 .venv/bin/pylint src tests
 git diff --check
+git diff
+git status --short
