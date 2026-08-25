@@ -8,6 +8,7 @@ from tu_web_linguacheck.language_links import (
     find_language_links_for_language,
     find_language_switcher_links,
     find_page_language_links,
+    find_translation_links,
     get_target_language,
     merge_language_links,
     resolve_language_link,
@@ -388,3 +389,70 @@ def test_get_target_language_returns_german_for_english() -> None:
 def test_get_target_language_returns_none_for_unsupported_language() -> None:
     """Für nicht unterstützte Sprachen gibt es keine automatische Gegenrichtung."""
     assert get_target_language("fr") is None
+
+
+def test_finds_english_translation_links_for_german_source() -> None:
+    """Eine deutsche Ausgangsseite erhält ihre englischen Übersetzungsziele."""
+    links = [
+        LanguageLink(
+            href="https://example.tu-dortmund.de/de/page/",
+            language="de",
+            detection_method="hreflang",
+        ),
+        LanguageLink(
+            href="https://example.tu-dortmund.de/en/page/",
+            language="en",
+            detection_method="hreflang",
+        ),
+    ]
+
+    translation_links = find_translation_links(links, "de")
+
+    assert translation_links == [
+        LanguageLink(
+            href="https://example.tu-dortmund.de/en/page/",
+            language="en",
+            detection_method="hreflang",
+        )
+    ]
+
+
+def test_finds_german_translation_links_for_english_source() -> None:
+    """Eine englische Ausgangsseite erhält ihre deutschen Übersetzungsziele."""
+    links = [
+        LanguageLink(
+            href="https://example.tu-dortmund.de/de/page/",
+            language="de",
+            detection_method="hreflang",
+        ),
+        LanguageLink(
+            href="https://example.tu-dortmund.de/en/page/",
+            language="en",
+            detection_method="hreflang",
+        ),
+    ]
+
+    translation_links = find_translation_links(links, "en")
+
+    assert translation_links == [
+        LanguageLink(
+            href="https://example.tu-dortmund.de/de/page/",
+            language="de",
+            detection_method="hreflang",
+        )
+    ]
+
+
+def test_returns_no_translation_links_for_unsupported_source_language() -> None:
+    """Eine unbekannte Ausgangssprache hat keine automatische Gegenrichtung."""
+    links = [
+        LanguageLink(
+            href="https://example.tu-dortmund.de/en/page/",
+            language="en",
+            detection_method="hreflang",
+        )
+    ]
+
+    translation_links = find_translation_links(links, "fr")
+
+    assert not translation_links

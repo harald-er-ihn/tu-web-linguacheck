@@ -165,3 +165,16 @@ def get_target_language(language: str) -> str | None:
     }
 
     return target_languages.get(language.casefold())
+
+
+def find_translation_links(
+    language_links: list[LanguageLink],
+    source_language: str,
+) -> list[LanguageLink]:
+    """Findet Übersetzungsziele für eine unterstützte Ausgangssprache."""
+    target_language = get_target_language(source_language)
+
+    if target_language is None:
+        return []
+
+    return find_language_links_for_language(language_links, target_language)
