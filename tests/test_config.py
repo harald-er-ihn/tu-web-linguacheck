@@ -3,7 +3,11 @@
 import pytest
 from pydantic import ValidationError
 
-from tu_web_linguacheck.config import CrawlConfig, ProjectConfig
+from tu_web_linguacheck.config import (
+    CrawlConfig,
+    ProjectConfig,
+    load_project_config,
+)
 
 
 def test_project_config_accepts_minimal_valid_configuration() -> None:
@@ -73,3 +77,27 @@ def test_crawl_config_rejects_unknown_fields() -> None:
             requests_per_second=1.0,
             obey_robots_txt=True,
         )
+
+
+def test_load_project_config_reads_valid_yaml(tmp_path) -> None:
+    """Eine gültige lokale YAML-Datei wird als Projektkonfiguration geladen."""
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        """
+profile: generic-de
+crawl:
+  allowed_domains:
+    - qi-gong-fuer-alle.de
+  max_depth: 1
+  max_pages: 10
+  requests_per_second: 1.0
+  obey_robots_txt: true
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    config = load_project_config(config_path)
+
+    assert config.profile == "generic-de"
+    assert config.crawl.allowed_domains == ["qi-gong-fuer-alle.de"]
+    assert config.crawl.max_depth == 1

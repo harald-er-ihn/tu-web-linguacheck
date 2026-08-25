@@ -1,5 +1,8 @@
-"""Modelle für die lokale Projektkonfiguration."""
+"""Modelle und Laden für die lokale Projektkonfiguration."""
 
+from pathlib import Path
+
+import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -22,3 +25,10 @@ class ProjectConfig(BaseModel):
 
     profile: str
     crawl: CrawlConfig
+
+
+def load_project_config(path: Path) -> ProjectConfig:
+    """Lädt und validiert eine lokale YAML-Projektkonfiguration."""
+    config_data = yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    return ProjectConfig.model_validate(config_data)
