@@ -1,10 +1,12 @@
 """Modelle für die lokale Projektkonfiguration."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CrawlConfig(BaseModel):
     """Grenzen und Sicherheitsvorgaben für einen Crawl."""
+
+    model_config = ConfigDict(extra="forbid")
 
     allowed_domains: list[str] = Field(min_length=1)
     max_depth: int = Field(ge=0)
@@ -15,6 +17,8 @@ class CrawlConfig(BaseModel):
 
 class ProjectConfig(BaseModel):
     """Minimale Konfiguration für einen Prüflauf."""
+
+    model_config = ConfigDict(extra="forbid")
 
     profile: str
     crawl: CrawlConfig

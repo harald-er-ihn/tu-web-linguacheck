@@ -60,3 +60,16 @@ def test_crawl_config_rejects_empty_allowed_domains() -> None:
             requests_per_second=1.0,
             obey_robots_txt=True,
         )
+
+
+def test_crawl_config_rejects_unknown_fields() -> None:
+    """Unbekannte Konfigurationsfelder werden nicht stillschweigend ignoriert."""
+    with pytest.raises(ValidationError):
+        CrawlConfig(
+            allowed_domains=["tu-dortmund.de"],
+            max_depth=1,
+            max_pages=10,
+            max_page=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        )
