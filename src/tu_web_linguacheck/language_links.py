@@ -141,3 +141,17 @@ def find_allowed_page_language_links(
     language_links = find_page_language_links(base_url, html)
 
     return filter_allowed_language_links(language_links, allowed_domains)
+
+
+def find_language_links_for_language(
+    language_links: list[LanguageLink],
+    language: str,
+) -> list[LanguageLink]:
+    """Findet Sprachlinks für einen bestimmten Sprachcode."""
+    normalized_language = language.casefold()
+
+    return [
+        language_link
+        for language_link in language_links
+        if language_link.language == normalized_language
+    ]

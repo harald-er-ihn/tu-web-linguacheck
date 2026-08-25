@@ -6,6 +6,7 @@ from tu_web_linguacheck.language_links import (
     find_allowed_page_language_links,
     find_hreflang_links,
     find_language_switcher_links,
+    find_language_links_for_language,
     find_page_language_links,
     merge_language_links,
     resolve_language_link,
@@ -330,3 +331,44 @@ def test_finds_only_allowed_page_language_links() -> None:
             detection_method="hreflang",
         )
     ]
+
+
+def test_finds_language_links_for_requested_language() -> None:
+    """Nur Sprachlinks zur angeforderten Sprache werden zurückgegeben."""
+    links = [
+        LanguageLink(
+            href="https://example.tu-dortmund.de/de/page/",
+            language="de",
+            detection_method="hreflang",
+        ),
+        LanguageLink(
+            href="https://example.tu-dortmund.de/en/page/",
+            language="en",
+            detection_method="language_switcher",
+        ),
+    ]
+
+    matching_links = find_language_links_for_language(links, "en")
+
+    assert matching_links == [
+        LanguageLink(
+            href="https://example.tu-dortmund.de/en/page/",
+            language="en",
+            detection_method="language_switcher",
+        )
+    ]
+
+
+def test_returns_no_language_links_when_language_is_not_available() -> None:
+    """Ohne passenden Sprachlink wird eine leere Liste zurückgegeben."""
+    links = [
+        LanguageLink(
+            href="https://example.tu-dortmund.de/de/page/",
+            language="de",
+            detection_method="hreflang",
+        )
+    ]
+
+    matching_links = find_language_links_for_language(links, "en")
+
+    assert not matching_links
