@@ -2,6 +2,7 @@
 
 from tu_web_linguacheck.language_links import (
     LanguageLink,
+    filter_allowed_language_links,
     find_hreflang_links,
     find_language_switcher_links,
     find_page_language_links,
@@ -261,3 +262,44 @@ def test_finds_resolved_and_merged_page_language_links() -> None:
             detection_method="hreflang",
         )
     ]
+
+
+def test_filters_language_links_to_allowed_domains() -> None:
+    """Nur Sprachlinks zu erlaubten Domains bleiben erhalten."""
+    links = [
+        LanguageLink(
+            href="https://stabsstelle-cfv.tu-dortmund.de/en/diversity/",
+            language="en",
+            detection_method="hreflang",
+        ),
+        LanguageLink(
+            href="https://external.example/en/diversity/",
+            language="en",
+            detection_method="language_switcher",
+        ),
+    ]
+
+    filtered_links = filter_allowed_language_links(links, ["tu-dortmund.de"])
+
+    assert filtered_links == [
+        LanguageLink(
+            href="https://stabsstelle-cfv.tu-dortmund.de/en/diversity/",
+            language="en",
+            detection_method="hreflang",
+        )
+    ]
+
+
+def test_filters_similar_but_foreign_domain_from_language_links() -> None:
+    """Ähnlich aussehende fremde Domains bleiben ausgeschlossen."""
+    links = [
+        LanguageLink(
+            href="https://tu-dortmund.de.example.org/en/page/",
+            language="en",
+            detection_method="hreflang",
+        )
+    ]
+
+    filtered_links = filter_allowed_language_links(links, ["tu-dortmund.de"])
+
+    assert not filtered_links

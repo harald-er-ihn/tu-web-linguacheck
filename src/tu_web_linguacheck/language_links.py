@@ -1,9 +1,12 @@
 """Erkennung von Links zu Sprachvarianten in HTML-Dokumenten."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
+
+from tu_web_linguacheck.urls import is_allowed_url
 
 _LANGUAGE_BY_LINK_TEXT = {
     "de": "de",
@@ -115,3 +118,15 @@ def find_page_language_links(base_url: str, html: str) -> list[LanguageLink]:
     ]
 
     return merge_language_links(resolved_links)
+
+
+def filter_allowed_language_links(
+    language_links: list[LanguageLink],
+    allowed_domains: Sequence[str],
+) -> list[LanguageLink]:
+    """Behält nur Sprachlinks zu erlaubten Domains."""
+    return [
+        language_link
+        for language_link in language_links
+        if is_allowed_url(language_link.href, allowed_domains)
+    ]
