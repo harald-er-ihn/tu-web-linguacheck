@@ -1,6 +1,8 @@
 """Tests für lokale HTTP-Hilfsfunktionen."""
 
-from tu_web_linguacheck.http import is_html_content_type
+import pytest
+
+from tu_web_linguacheck.http import fetch_html, is_html_content_type
 
 
 def test_recognizes_html_content_type() -> None:
@@ -11,3 +13,12 @@ def test_recognizes_html_content_type() -> None:
 def test_rejects_non_html_content_type() -> None:
     """Nicht-HTML-Antworten werden nicht als HTML akzeptiert."""
     assert not is_html_content_type("application/pdf")
+
+
+def test_fetch_html_rejects_url_outside_allowed_domains() -> None:
+    """Eine nicht erlaubte URL wird vor einem HTTP-Abruf abgelehnt."""
+    with pytest.raises(ValueError, match="nicht erlaubt"):
+        fetch_html(
+            "https://external.example/page/",
+            allowed_domains=["tu-dortmund.de"],
+        )
