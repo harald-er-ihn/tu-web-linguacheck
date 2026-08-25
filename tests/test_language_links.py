@@ -4,6 +4,7 @@ from tu_web_linguacheck.language_links import (
     LanguageLink,
     find_hreflang_links,
     find_language_switcher_links,
+    find_page_language_links,
     merge_language_links,
     resolve_language_link,
 )
@@ -235,3 +236,28 @@ def test_keeps_absolute_language_link() -> None:
     )
 
     assert resolved_link == language_link
+
+
+def test_finds_resolved_and_merged_page_language_links() -> None:
+    """Sprachlinks einer Seite werden aufgelöst und nach Quelle priorisiert."""
+    html = """
+    <head>
+      <link rel="alternate" hreflang="en" href="/en/page/" />
+    </head>
+    <nav>
+      <a href="https://example.tu-dortmund.de/en/page/">English</a>
+    </nav>
+    """
+
+    links = find_page_language_links(
+        "https://example.tu-dortmund.de/de/page/",
+        html,
+    )
+
+    assert links == [
+        LanguageLink(
+            href="https://example.tu-dortmund.de/en/page/",
+            language="en",
+            detection_method="hreflang",
+        )
+    ]

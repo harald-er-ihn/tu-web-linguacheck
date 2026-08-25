@@ -104,3 +104,14 @@ def merge_language_links(language_links: list[LanguageLink]) -> list[LanguageLin
 def resolve_language_link(base_url: str, language_link: LanguageLink) -> LanguageLink:
     """Löst das Ziel eines Sprachlinks gegen eine Basis-URL auf."""
     return replace(language_link, href=urljoin(base_url, language_link.href))
+
+
+def find_page_language_links(base_url: str, html: str) -> list[LanguageLink]:
+    """Findet, löst auf und priorisiert Sprachlinks einer HTML-Seite."""
+    detected_links = find_language_switcher_links(html) + find_hreflang_links(html)
+    resolved_links = [
+        resolve_language_link(base_url, language_link)
+        for language_link in detected_links
+    ]
+
+    return merge_language_links(resolved_links)
