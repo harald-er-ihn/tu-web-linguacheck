@@ -130,3 +130,14 @@ def filter_allowed_language_links(
         for language_link in language_links
         if is_allowed_url(language_link.href, allowed_domains)
     ]
+
+
+def find_allowed_page_language_links(
+    base_url: str,
+    html: str,
+    allowed_domains: Sequence[str],
+) -> list[LanguageLink]:
+    """Findet nur aufgelöste Sprachlinks zu erlaubten Domains."""
+    language_links = find_page_language_links(base_url, html)
+
+    return filter_allowed_language_links(language_links, allowed_domains)

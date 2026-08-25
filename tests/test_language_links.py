@@ -3,6 +3,7 @@
 from tu_web_linguacheck.language_links import (
     LanguageLink,
     filter_allowed_language_links,
+    find_allowed_page_language_links,
     find_hreflang_links,
     find_language_switcher_links,
     find_page_language_links,
@@ -303,3 +304,29 @@ def test_filters_similar_but_foreign_domain_from_language_links() -> None:
     filtered_links = filter_allowed_language_links(links, ["tu-dortmund.de"])
 
     assert not filtered_links
+
+
+def test_finds_only_allowed_page_language_links() -> None:
+    """Eine Seite liefert nur aufgelöste Sprachlinks zu erlaubten Domains."""
+    html = """
+    <head>
+      <link rel="alternate" hreflang="en" href="/en/page/" />
+    </head>
+    <nav>
+      <a href="https://external.example/en/page/">English</a>
+    </nav>
+    """
+
+    links = find_allowed_page_language_links(
+        "https://stabsstelle-cfv.tu-dortmund.de/de/page/",
+        html,
+        ["tu-dortmund.de"],
+    )
+
+    assert links == [
+        LanguageLink(
+            href="https://stabsstelle-cfv.tu-dortmund.de/en/page/",
+            language="en",
+            detection_method="hreflang",
+        )
+    ]
