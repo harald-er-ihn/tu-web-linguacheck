@@ -8,6 +8,7 @@ from tu_web_linguacheck.language_links import (
     find_language_links_for_language,
     find_language_switcher_links,
     find_page_language_links,
+    get_target_language,
     merge_language_links,
     resolve_language_link,
 )
@@ -372,3 +373,18 @@ def test_returns_no_language_links_when_language_is_not_available() -> None:
     matching_links = find_language_links_for_language(links, "en")
 
     assert not matching_links
+
+
+def test_get_target_language_returns_english_for_german() -> None:
+    """Eine deutsche Seite sucht eine englische Sprachvariante."""
+    assert get_target_language("de") == "en"
+
+
+def test_get_target_language_returns_german_for_english() -> None:
+    """Eine englische Seite sucht eine deutsche Sprachvariante."""
+    assert get_target_language("en") == "de"
+
+
+def test_get_target_language_returns_none_for_unsupported_language() -> None:
+    """Für nicht unterstützte Sprachen gibt es keine automatische Gegenrichtung."""
+    assert get_target_language("fr") is None

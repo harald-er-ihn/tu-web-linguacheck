@@ -155,3 +155,13 @@ def find_language_links_for_language(
         for language_link in language_links
         if language_link.language == normalized_language
     ]
+
+
+def get_target_language(language: str) -> str | None:
+    """Gibt die unterstützte Gegenrichtung für einen Sprachcode zurück."""
+    target_languages = {
+        "de": "en",
+        "en": "de",
+    }
+
+    return target_languages.get(language.casefold())
