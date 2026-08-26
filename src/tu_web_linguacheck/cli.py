@@ -3,6 +3,7 @@
 import typer
 
 from tu_web_linguacheck import __version__
+from tu_web_linguacheck.html_content import extract_page_content
 from tu_web_linguacheck.http import fetch_html
 from tu_web_linguacheck.language_links import (
     find_allowed_page_language_links,
@@ -57,6 +58,7 @@ def inspect(
 ) -> None:
     """Ruft eine einzelne erlaubte HTML-Seite ab und zeigt Sprachlinks an."""
     html = fetch_html(url, allowed_domains)
+    page_content = extract_page_content(html)
     language_links = find_allowed_page_language_links(
         url,
         html,
@@ -64,6 +66,9 @@ def inspect(
     )
     translation_links = find_translation_links(language_links, source_language)
 
+    typer.echo(f"Titel: {page_content.title}")
+    typer.echo(f"Extrahierte Textzeichen: {len(page_content.text)}")
+    typer.echo(f"Textvorschau: {page_content.text[:500]}")
     typer.echo(f"HTML-Zeichen: {len(html)}")
     typer.echo(f"Erkannte erlaubte Sprachlinks: {len(language_links)}")
 
