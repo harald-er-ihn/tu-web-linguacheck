@@ -158,6 +158,7 @@ def test_check_text_displays_normalized_findings(monkeypatch) -> None:
     assert result.exit_code == 0
     assert "Sprachfunde: 1" in result.output
     assert "Kategorie: misspelling" in result.output
+    assert "Meldung: Möglicher Rechtschreibfehler gefunden." in result.output
     assert "Schweregrad: warning" in result.output
     assert "Regel: GERMAN_SPELLER_RULE" in result.output
     assert "Vorschläge: ist" in result.output

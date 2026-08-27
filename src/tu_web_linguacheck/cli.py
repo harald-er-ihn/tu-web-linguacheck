@@ -136,6 +136,7 @@ def check_text(
         end_offset = finding.offset + finding.length
 
         typer.echo(f"Kategorie: {finding.category}")
+        typer.echo(f"Meldung: {finding.message}")
         typer.echo(f"Schweregrad: {finding.severity}")
         typer.echo(f"Regel: {finding.source_rule_id}")
         typer.echo(f"Vorschläge: {', '.join(finding.suggestions) or '-'}")
