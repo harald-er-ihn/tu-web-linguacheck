@@ -230,6 +230,10 @@ def test_check_url_checks_one_allowed_html_page(monkeypatch, tmp_path) -> None:
             requests_per_second=1.0,
             obey_robots_txt=True,
         ),
+        check={
+            "language": "de-DE",
+            "ignored_rule_ids": ["DE_SIMPLE_REPLACE_QI_GONG"],
+        },
     )
 
     def fake_load_project_config(path):
@@ -253,9 +257,10 @@ def test_check_url_checks_one_allowed_html_page(monkeypatch, tmp_path) -> None:
             text="Das istf ein Test.",
         )
 
-    def fake_check(_self, *, text, language):
+    def fake_check(_self, *, text, language, disabled_rule_ids):
         assert text == "Das istf ein Test."
         assert language == "de-DE"
+        assert disabled_rule_ids == ["DE_SIMPLE_REPLACE_QI_GONG"]
 
         return [
             LanguageToolMatch(

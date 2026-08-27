@@ -116,9 +116,19 @@ def check_text(
         "--profile",
         help="Prüfprofil, zum Beispiel generic-de.",
     ),
+    disabled_rule_ids: list[str] = (),
 ) -> None:
     """Prüft Text ausschließlich mit dem lokalen LanguageTool-Server."""
-    matches = LanguageToolClient().check(text=text, language=language)
+    client = LanguageToolClient()
+
+    if disabled_rule_ids:
+        matches = client.check(
+            text=text,
+            language=language,
+            disabled_rule_ids=disabled_rule_ids,
+        )
+    else:
+        matches = client.check(text=text, language=language)
     findings = [
         finding_from_languagetool_match(
             match,
@@ -180,6 +190,7 @@ def check_url(
         language=config.check.language,
         url=prepared_url,
         profile=config.profile,
+        disabled_rule_ids=config.check.ignored_rule_ids,
     )
 
 
