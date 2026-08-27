@@ -233,6 +233,7 @@ def test_check_url_checks_one_allowed_html_page(monkeypatch, tmp_path) -> None:
         check={
             "language": "de-DE",
             "ignored_rule_ids": ["DE_SIMPLE_REPLACE_QI_GONG"],
+            "ignored_terms": ["istf"],
         },
     )
 
@@ -308,8 +309,8 @@ def test_check_url_checks_one_allowed_html_page(monkeypatch, tmp_path) -> None:
     assert "URL: https://example.org/startseite/" in result.output
     assert "Titel: Testseite" in result.output
     assert "Extrahierte Textzeichen: 18" in result.output
-    assert "Sprachfunde: 1" in result.output
-    assert "Fundstelle: istf" in result.output
+    assert "Sprachfunde: 0" in result.output
+    assert "Fundstelle: istf" not in result.output
 
 
 def test_check_text_limits_long_context_to_match_surroundings(monkeypatch) -> None:

@@ -7,7 +7,10 @@ from pydantic import ValidationError
 
 from tu_web_linguacheck import __version__
 from tu_web_linguacheck.config import load_project_config
-from tu_web_linguacheck.findings import finding_from_languagetool_match
+from tu_web_linguacheck.findings import (
+    filter_ignored_terms,
+    finding_from_languagetool_match,
+)
 from tu_web_linguacheck.html_content import extract_page_content
 from tu_web_linguacheck.http import fetch_html
 from tu_web_linguacheck.language_links import (
@@ -117,6 +120,7 @@ def check_text(
         help="Prüfprofil, zum Beispiel generic-de.",
     ),
     disabled_rule_ids: list[str] = (),
+    ignored_terms: list[str] = (),
 ) -> None:
     """Prüft Text ausschließlich mit dem lokalen LanguageTool-Server."""
     client = LanguageToolClient()
@@ -138,6 +142,10 @@ def check_text(
         )
         for match in matches
     ]
+    findings = filter_ignored_terms(
+        findings,
+        ignored_terms=ignored_terms,
+    )
 
     typer.echo(f"Sprachfunde: {len(findings)}")
 
@@ -191,6 +199,7 @@ def check_url(
         url=prepared_url,
         profile=config.profile,
         disabled_rule_ids=config.check.ignored_rule_ids,
+        ignored_terms=config.check.ignored_terms,
     )
 
 
