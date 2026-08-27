@@ -1,8 +1,12 @@
 """Kommandozeilenschnittstelle für tu-web-linguacheck."""
 
+from pathlib import Path
+
 import typer
+from pydantic import ValidationError
 
 from tu_web_linguacheck import __version__
+from tu_web_linguacheck.config import load_project_config
 from tu_web_linguacheck.findings import finding_from_languagetool_match
 from tu_web_linguacheck.html_content import extract_page_content
 from tu_web_linguacheck.http import fetch_html
@@ -136,6 +140,23 @@ def check_text(
         typer.echo(f"Fundstelle: {matched_text}")
         typer.echo(f"Position: {finding.offset}–{end_offset}")
         typer.echo(f"Kontext: {finding.context}")
+
+
+@app.command()
+def validate_config(
+    config_path: Path,
+) -> None:
+    """Lädt und validiert eine lokale YAML-Konfiguration."""
+    try:
+        config = load_project_config(config_path)
+    except ValidationError as error:
+        typer.echo("Konfiguration ungültig.")
+        typer.echo(str(error))
+        raise typer.Exit(code=1)
+
+    typer.echo("Konfiguration gültig.")
+    typer.echo(f"Profil: {config.profile}")
+    typer.echo(f"Erlaubte Domains: {', '.join(config.crawl.allowed_domains)}")
 
 
 def main() -> None:

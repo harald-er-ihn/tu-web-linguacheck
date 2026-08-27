@@ -162,3 +162,53 @@ def test_check_text_displays_normalized_findings(monkeypatch) -> None:
     assert "Fundstelle: istf" in result.output
     assert "Position: 4–8" in result.output
     assert "Kontext: Das istf ein Test." in result.output
+
+
+def test_validate_config_accepts_valid_local_yaml(tmp_path) -> None:
+    """Der CLI-Befehl bestätigt eine gültige lokale Konfiguration."""
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        """
+profile: generic-de
+crawl:
+  allowed_domains:
+    - example.org
+  max_depth: 1
+  max_pages: 10
+  requests_per_second: 1.0
+  obey_robots_txt: true
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["validate-config", str(config_path)])
+
+    assert result.exit_code == 0
+    assert "Konfiguration gültig." in result.output
+    assert "Profil: generic-de" in result.output
+    assert "Erlaubte Domains: example.org" in result.output
+
+
+def test_validate_config_reports_invalid_values(tmp_path) -> None:
+    """Der CLI-Befehl meldet ungültige Konfigurationswerte verständlich."""
+    config_path = tmp_path / "invalid-config.yaml"
+    config_path.write_text(
+        """
+profile: generic-de
+crawl:
+  allowed_domains:
+    - example.org
+  max_depth: 1
+  max_pages: 0
+  requests_per_second: 1.0
+  obey_robots_txt: true
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["validate-config", str(config_path)])
+
+    assert result.exit_code == 1
+    assert "Konfiguration ungültig." in result.output
+    assert "max_pages" in result.output
+    assert "Traceback" not in result.output
