@@ -304,3 +304,49 @@ def test_check_url_checks_one_allowed_html_page(monkeypatch, tmp_path) -> None:
     assert "Extrahierte Textzeichen: 18" in result.output
     assert "Sprachfunde: 1" in result.output
     assert "Fundstelle: istf" in result.output
+
+
+def test_check_text_limits_long_context_to_match_surroundings(monkeypatch) -> None:
+    """Der Check-Text-Befehl kürzt langen Kontext um die Fundstelle."""
+    text = f"{'a' * 100}istf{'b' * 100}"
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        assert text == f"{'a' * 100}istf{'b' * 100}"
+        assert language == "de-DE"
+
+        return [
+            LanguageToolMatch(
+                message="Möglicher Rechtschreibfehler gefunden.",
+                offset=100,
+                length=4,
+                rule_id="GERMAN_SPELLER_RULE",
+                category="TYPOS",
+                issue_type="misspelling",
+                replacements=("ist",),
+            )
+        ]
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-text",
+            text,
+            "--language",
+            "de-DE",
+            "--url",
+            "https://example.org/test/",
+            "--profile",
+            "generic-de",
+        ],
+    )
+
+    expected_context = f"Kontext: …{'a' * 80}istf{'b' * 80}…"
+
+    assert result.exit_code == 0
+    assert expected_context in result.output
+    assert f"Kontext: {text}" not in result.output

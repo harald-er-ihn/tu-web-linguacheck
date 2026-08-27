@@ -141,7 +141,17 @@ def check_text(
         typer.echo(f"Vorschläge: {', '.join(finding.suggestions) or '-'}")
         typer.echo(f"Fundstelle: {matched_text}")
         typer.echo(f"Position: {finding.offset}–{end_offset}")
-        typer.echo(f"Kontext: {finding.context}")
+        context_start = max(0, finding.offset - 80)
+        context_end = min(len(finding.context), end_offset + 80)
+        context = finding.context[context_start:context_end]
+
+        if context_start > 0:
+            context = f"…{context}"
+
+        if context_end < len(finding.context):
+            context = f"{context}…"
+
+        typer.echo(f"Kontext: {context}")
 
 
 @app.command()
