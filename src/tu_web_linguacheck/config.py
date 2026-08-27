@@ -28,6 +28,7 @@ class CheckConfig(BaseModel):
 
     language: str = Field(default="de-DE", min_length=1)
     ignored_rule_ids: list[str] = Field(default_factory=list)
+    ignored_terms: list[str] = Field(default_factory=list)
 
 
 class ProjectConfig(BaseModel):

@@ -168,3 +168,31 @@ def test_check_config_accepts_ignored_language_tool_rule_ids() -> None:
     assert config.check.ignored_rule_ids == [
         "DE_SIMPLE_REPLACE_QI_GONG",
     ]
+
+
+def test_check_config_accepts_ignored_terms() -> None:
+    """Prüfkonfiguration akzeptiert gezielt ignorierte Begriffe."""
+    config = ProjectConfig.model_validate(
+        {
+            "profile": "generic-de",
+            "crawl": {
+                "allowed_domains": ["example.org"],
+                "max_depth": 1,
+                "max_pages": 10,
+                "requests_per_second": 1.0,
+                "obey_robots_txt": True,
+            },
+            "check": {
+                "language": "de-DE",
+                "ignored_terms": [
+                    "TiMana",
+                    "Samtosha",
+                ],
+            },
+        }
+    )
+
+    assert config.check.ignored_terms == [
+        "TiMana",
+        "Samtosha",
+    ]
