@@ -157,3 +157,40 @@ def test_check_raises_clear_error_when_local_server_is_unavailable(
             text="Ein selbst erzeugter Test.",
             language="de-DE",
         )
+
+
+def test_check_sends_disabled_rule_ids_to_local_server(monkeypatch: Any) -> None:
+    """Der Client übergibt gezielt deaktivierte Regeln an LanguageTool."""
+    captured: dict[str, Any] = {}
+
+    def fake_urlopen(request: Any, *, timeout: float) -> FakeResponse:
+        captured["body"] = parse_qs(request.data.decode("utf-8"))
+        captured["timeout"] = timeout
+
+        return FakeResponse({"matches": []})
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.languagetool.urlopen",
+        fake_urlopen,
+    )
+
+    matches = LanguageToolClient().check(
+        text="Qi Gong für Alle",
+        language="de-DE",
+        disabled_rule_ids=[
+            "DE_SIMPLE_REPLACE_QI_GONG",
+            "ANOTHER_RULE",
+        ],
+    )
+
+    assert matches == []
+    assert captured == {
+        "body": {
+            "text": ["Qi Gong für Alle"],
+            "language": ["de-DE"],
+            "disabledRules": [
+                "DE_SIMPLE_REPLACE_QI_GONG,ANOTHER_RULE",
+            ],
+        },
+        "timeout": 10.0,
+    }

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 from urllib.error import URLError
@@ -34,14 +35,23 @@ class LanguageToolMatch:
 class LanguageToolClient:
     """Prüft Texte mit einem lokalen LanguageTool-Server."""
 
-    def check(self, *, text: str, language: str) -> list[LanguageToolMatch]:
+    def check(
+        self,
+        *,
+        text: str,
+        language: str,
+        disabled_rule_ids: Sequence[str] = (),
+    ) -> list[LanguageToolMatch]:
         """Sendet Text und Sprachcode an den lokalen Prüfendpunkt."""
-        request_data = urlencode(
-            {
-                "text": text,
-                "language": language,
-            }
-        ).encode("utf-8")
+        request_fields = {
+            "text": text,
+            "language": language,
+        }
+
+        if disabled_rule_ids:
+            request_fields["disabledRules"] = ",".join(disabled_rule_ids)
+
+        request_data = urlencode(request_fields).encode("utf-8")
 
         request = Request(
             LANGUAGETOOL_CHECK_URL,
