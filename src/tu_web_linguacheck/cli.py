@@ -131,6 +131,11 @@ def check_text(
         typer.echo(f"Schweregrad: {finding.severity}")
         typer.echo(f"Regel: {finding.source_rule_id}")
         typer.echo(f"Vorschläge: {', '.join(finding.suggestions) or '-'}")
+        matched_text = finding.context[finding.offset : finding.offset + finding.length]
+        end_offset = finding.offset + finding.length
+        typer.echo(f"Fundstelle: {matched_text}")
+        typer.echo(f"Position: {finding.offset}–{end_offset}")
+        typer.echo(f"Kontext: {finding.context}")
 
 
 def main() -> None:

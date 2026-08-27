@@ -159,3 +159,6 @@ def test_check_text_displays_normalized_findings(monkeypatch) -> None:
     assert "Schweregrad: warning" in result.output
     assert "Regel: GERMAN_SPELLER_RULE" in result.output
     assert "Vorschläge: ist" in result.output
+    assert "Fundstelle: istf" in result.output
+    assert "Position: 4–8" in result.output
+    assert "Kontext: Das istf ein Test." in result.output
