@@ -27,6 +27,7 @@ class CheckConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     language: str = Field(default="de-DE", min_length=1)
+    ignored_rule_ids: list[str] = Field(default_factory=list)
 
 
 class ProjectConfig(BaseModel):

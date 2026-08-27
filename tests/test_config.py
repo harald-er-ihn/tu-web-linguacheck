@@ -142,3 +142,29 @@ def test_project_config_accepts_documented_extended_configuration() -> None:
         r"/wp-admin(?:/|$)",
     ]
     assert config.check.language == "de-DE"
+
+
+def test_check_config_accepts_ignored_language_tool_rule_ids() -> None:
+    """Prüfkonfiguration akzeptiert gezielt ignorierte LanguageTool-Regeln."""
+    config = ProjectConfig.model_validate(
+        {
+            "profile": "generic-de",
+            "crawl": {
+                "allowed_domains": ["example.org"],
+                "max_depth": 1,
+                "max_pages": 10,
+                "requests_per_second": 1.0,
+                "obey_robots_txt": True,
+            },
+            "check": {
+                "language": "de-DE",
+                "ignored_rule_ids": [
+                    "DE_SIMPLE_REPLACE_QI_GONG",
+                ],
+            },
+        }
+    )
+
+    assert config.check.ignored_rule_ids == [
+        "DE_SIMPLE_REPLACE_QI_GONG",
+    ]
