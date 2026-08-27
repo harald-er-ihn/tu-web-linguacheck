@@ -2,7 +2,11 @@
 
 import pytest
 
-from tu_web_linguacheck.urls import is_allowed_url, normalize_url
+from tu_web_linguacheck.urls import (
+    is_allowed_url,
+    normalize_url,
+    should_crawl_url,
+)
 
 
 @pytest.mark.parametrize(
@@ -92,3 +96,45 @@ def test_normalize_url_removes_only_standard_ports(
 ) -> None:
     """HTTP- und HTTPS-Standardports werden entfernt."""
     assert normalize_url(url, tracking_parameters=[]) == expected_url
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.org/seminar.pdf",
+        "https://example.org/bild.jpg",
+        "https://example.org/download.zip",
+        "https://example.org/datei.docx?download=1",
+        "https://example.org/video.mp4#start",
+        "mailto:info@example.org",
+        "ftp://example.org/archive.zip",
+    ],
+)
+def test_should_crawl_url_rejects_non_html_or_non_http_urls(url: str) -> None:
+    """Nicht-HTML- und Nicht-HTTP(S)-URLs werden ausgeschlossen."""
+
+    exclude_patterns = [
+        r"\.(?:docx?|jpe?g|mp4|pdf|zip)(?:$|[?#])",
+    ]
+
+    assert not should_crawl_url(url, exclude_patterns)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.org/",
+        "https://example.org/startseite/",
+        "https://example.org/veranstaltungen/?page=2",
+    ],
+)
+def test_should_crawl_url_accepts_http_urls_without_excluded_pattern(
+    url: str,
+) -> None:
+    """Zulässige HTTP(S)-URLs ohne Ausschlussmuster bleiben erhalten."""
+
+    exclude_patterns = [
+        r"\.(?:docx?|jpe?g|mp4|pdf|zip)(?:$|[?#])",
+    ]
+
+    assert should_crawl_url(url, exclude_patterns)

@@ -1,5 +1,6 @@
 """Regeln für URLs, erlaubte Domains und URL-Normalisierung."""
 
+import re
 from collections.abc import Sequence
 from urllib.parse import parse_qsl, urlencode, urlparse, urlsplit, urlunsplit
 
@@ -51,4 +52,17 @@ def normalize_url(url: str, tracking_parameters: Sequence[str]) -> str:
             urlencode(relevant_query_parameters),
             "",
         )
+    )
+
+
+def should_crawl_url(url: str, exclude_patterns: Sequence[str]) -> bool:
+    """Prüft, ob eine HTTP(S)-URL nicht auf ein Ausschlussmuster passt."""
+    parsed_url = urlsplit(url)
+
+    if parsed_url.scheme not in {"http", "https"} or parsed_url.hostname is None:
+        return False
+
+    return not any(
+        re.search(pattern, url, flags=re.IGNORECASE) is not None
+        for pattern in exclude_patterns
     )
