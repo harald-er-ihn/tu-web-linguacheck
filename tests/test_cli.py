@@ -357,3 +357,103 @@ def test_check_text_limits_long_context_to_match_surroundings(monkeypatch) -> No
     assert result.exit_code == 0
     assert expected_context in result.output
     assert f"Kontext: {text}" not in result.output
+
+
+def test_check_url_checks_extracted_text_blocks_separately(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Der Check-URL-Befehl prüft getrennte Textblöcke einzeln."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="generic-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=1,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+
+    checked_texts: list[str] = []
+
+    def fake_load_project_config(path):
+        assert path == config_path
+        return config
+
+    def fake_prepare_crawl_url(url, crawl_config):
+        assert url == "https://example.org/startseite/"
+        assert crawl_config == config.crawl
+        return "https://example.org/startseite/"
+
+    def fake_fetch_html(url, allowed_domains):
+        assert url == "https://example.org/startseite/"
+        assert allowed_domains == ["example.org"]
+        return "<html></html>"
+
+    def fake_extract_page_content(html):
+        assert html == "<html></html>"
+
+        return PageContent(
+            title="Testseite",
+            text="Überschrift\nIm Satz steht Text.",
+        )
+
+    def fake_check(_self, *, text, language):
+        assert language == "de-DE"
+        checked_texts.append(text)
+
+        if text == "Im Satz steht Text.":
+            return [
+                LanguageToolMatch(
+                    message="Testmeldung.",
+                    offset=0,
+                    length=2,
+                    rule_id="TEST_RULE",
+                    category="TEST",
+                    issue_type="grammar",
+                    replacements=(),
+                )
+            ]
+
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        fake_load_project_config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.prepare_crawl_url",
+        fake_prepare_crawl_url,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        fake_fetch_html,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.extract_page_content",
+        fake_extract_page_content,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-url",
+            "https://example.org/startseite/",
+            str(config_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert checked_texts == [
+        "Überschrift",
+        "Im Satz steht Text.",
+    ]
+    assert "Sprachfunde: 1" in result.output
+    assert "Fundstelle: Im" in result.output
+    assert "Position: 12–14" in result.output

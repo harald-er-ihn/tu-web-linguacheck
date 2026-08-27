@@ -1,5 +1,6 @@
 """Kommandozeilenschnittstelle für tu-web-linguacheck."""
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import typer
@@ -18,6 +19,7 @@ from tu_web_linguacheck.language_links import (
     find_translation_links,
 )
 from tu_web_linguacheck.languagetool import LanguageToolClient
+from tu_web_linguacheck.models import Finding
 from tu_web_linguacheck.urls import prepare_crawl_url
 
 app = typer.Typer(
@@ -101,6 +103,72 @@ def inspect(
         typer.echo(f"- {language_link.href} [{language_link.detection_method}]")
 
 
+def _check_text_findings(
+    text: str,
+    *,
+    language: str,
+    url: str,
+    profile: str,
+    disabled_rule_ids: Sequence[str] = (),
+    ignored_terms: Sequence[str] = (),
+) -> list[Finding]:
+    """Prüft Text lokal und überführt Ergebnisse in interne Funde."""
+    client = LanguageToolClient()
+
+    if disabled_rule_ids:
+        matches = client.check(
+            text=text,
+            language=language,
+            disabled_rule_ids=disabled_rule_ids,
+        )
+    else:
+        matches = client.check(text=text, language=language)
+
+    findings = [
+        finding_from_languagetool_match(
+            match,
+            url=url,
+            context=text,
+            profile=profile,
+        )
+        for match in matches
+    ]
+
+    return filter_ignored_terms(
+        findings,
+        ignored_terms=list(ignored_terms),
+    )
+
+
+def _display_findings(findings: Sequence[Finding]) -> None:
+    """Gibt Sprachfunde lesbar in der Kommandozeile aus."""
+    typer.echo(f"Sprachfunde: {len(findings)}")
+
+    for finding in findings:
+        matched_text = finding.context[finding.offset : finding.offset + finding.length]
+        end_offset = finding.offset + finding.length
+
+        typer.echo(f"Kategorie: {finding.category}")
+        typer.echo(f"Meldung: {finding.message}")
+        typer.echo(f"Schweregrad: {finding.severity}")
+        typer.echo(f"Regel: {finding.source_rule_id}")
+        typer.echo(f"Vorschläge: {', '.join(finding.suggestions) or '-'}")
+        typer.echo(f"Fundstelle: {matched_text}")
+        typer.echo(f"Position: {finding.offset}–{end_offset}")
+
+        context_start = max(0, finding.offset - 80)
+        context_end = min(len(finding.context), end_offset + 80)
+        context = finding.context[context_start:context_end]
+
+        if context_start > 0:
+            context = f"…{context}"
+
+        if context_end < len(finding.context):
+            context = f"{context}…"
+
+        typer.echo(f"Kontext: {context}")
+
+
 @app.command()
 def check_text(
     text: str,
@@ -119,58 +187,15 @@ def check_text(
         "--profile",
         help="Prüfprofil, zum Beispiel generic-de.",
     ),
-    disabled_rule_ids: list[str] = (),
-    ignored_terms: list[str] = (),
 ) -> None:
     """Prüft Text ausschließlich mit dem lokalen LanguageTool-Server."""
-    client = LanguageToolClient()
-
-    if disabled_rule_ids:
-        matches = client.check(
-            text=text,
-            language=language,
-            disabled_rule_ids=disabled_rule_ids,
-        )
-    else:
-        matches = client.check(text=text, language=language)
-    findings = [
-        finding_from_languagetool_match(
-            match,
-            url=url,
-            context=text,
-            profile=profile,
-        )
-        for match in matches
-    ]
-    findings = filter_ignored_terms(
-        findings,
-        ignored_terms=ignored_terms,
+    findings = _check_text_findings(
+        text,
+        language=language,
+        url=url,
+        profile=profile,
     )
-
-    typer.echo(f"Sprachfunde: {len(findings)}")
-
-    for finding in findings:
-        matched_text = finding.context[finding.offset : finding.offset + finding.length]
-        end_offset = finding.offset + finding.length
-
-        typer.echo(f"Kategorie: {finding.category}")
-        typer.echo(f"Meldung: {finding.message}")
-        typer.echo(f"Schweregrad: {finding.severity}")
-        typer.echo(f"Regel: {finding.source_rule_id}")
-        typer.echo(f"Vorschläge: {', '.join(finding.suggestions) or '-'}")
-        typer.echo(f"Fundstelle: {matched_text}")
-        typer.echo(f"Position: {finding.offset}–{end_offset}")
-        context_start = max(0, finding.offset - 80)
-        context_end = min(len(finding.context), end_offset + 80)
-        context = finding.context[context_start:context_end]
-
-        if context_start > 0:
-            context = f"…{context}"
-
-        if context_end < len(finding.context):
-            context = f"{context}…"
-
-        typer.echo(f"Kontext: {context}")
+    _display_findings(findings)
 
 
 @app.command()
@@ -193,14 +218,34 @@ def check_url(
     typer.echo(f"Titel: {page_content.title}")
     typer.echo(f"Extrahierte Textzeichen: {len(page_content.text)}")
 
-    check_text(
-        page_content.text,
-        language=config.check.language,
-        url=prepared_url,
-        profile=config.profile,
-        disabled_rule_ids=config.check.ignored_rule_ids,
-        ignored_terms=config.check.ignored_terms,
-    )
+    findings: list[Finding] = []
+    block_offset = 0
+
+    for line in page_content.text.splitlines(keepends=True):
+        block = line.rstrip("\r\n")
+
+        if block:
+            block_findings = _check_text_findings(
+                block,
+                language=config.check.language,
+                url=prepared_url,
+                profile=config.profile,
+                disabled_rule_ids=config.check.ignored_rule_ids,
+                ignored_terms=config.check.ignored_terms,
+            )
+            findings.extend(
+                finding.model_copy(
+                    update={
+                        "context": page_content.text,
+                        "offset": finding.offset + block_offset,
+                    }
+                )
+                for finding in block_findings
+            )
+
+        block_offset += len(line)
+
+    _display_findings(findings)
 
 
 @app.command()
