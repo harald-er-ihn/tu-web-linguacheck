@@ -67,3 +67,28 @@ def test_normalize_url_keeps_relevant_query_parameters() -> None:
     )
 
     assert normalized_url == "https://example.org/search/?q=sprachpruefung&page=2"
+
+
+@pytest.mark.parametrize(
+    ("url", "expected_url"),
+    [
+        (
+            "http://Example.org:80/page/",
+            "http://example.org/page/",
+        ),
+        (
+            "https://Example.org:443/page/",
+            "https://example.org/page/",
+        ),
+        (
+            "https://Example.org:8443/page/",
+            "https://example.org:8443/page/",
+        ),
+    ],
+)
+def test_normalize_url_removes_only_standard_ports(
+    url: str,
+    expected_url: str,
+) -> None:
+    """HTTP- und HTTPS-Standardports werden entfernt."""
+    assert normalize_url(url, tracking_parameters=[]) == expected_url

@@ -26,6 +26,13 @@ def is_allowed_url(url: str, allowed_domains: Sequence[str]) -> bool:
 def normalize_url(url: str, tracking_parameters: Sequence[str]) -> str:
     """Entfernt Fragmente und konfigurierte Tracking-Parameter aus einer URL."""
     parsed_url = urlsplit(url)
+    normalized_netloc = parsed_url.netloc.lower()
+
+    if (parsed_url.scheme == "http" and parsed_url.port == 80) or (
+        parsed_url.scheme == "https" and parsed_url.port == 443
+    ):
+        normalized_netloc = normalized_netloc.rsplit(":", maxsplit=1)[0]
+
     tracking_parameter_names = {
         parameter.casefold() for parameter in tracking_parameters
     }
@@ -39,7 +46,7 @@ def normalize_url(url: str, tracking_parameters: Sequence[str]) -> str:
     return urlunsplit(
         (
             parsed_url.scheme,
-            parsed_url.netloc.lower(),
+            normalized_netloc,
             parsed_url.path,
             urlencode(relevant_query_parameters),
             "",
