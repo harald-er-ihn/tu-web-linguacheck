@@ -2,9 +2,11 @@
 
 import pytest
 
+from tu_web_linguacheck.config import CrawlConfig
 from tu_web_linguacheck.urls import (
     is_allowed_url,
     normalize_url,
+    prepare_crawl_url,
     should_crawl_url,
 )
 
@@ -138,3 +140,38 @@ def test_should_crawl_url_accepts_http_urls_without_excluded_pattern(
     ]
 
     assert should_crawl_url(url, exclude_patterns)
+
+
+def test_prepare_crawl_url_returns_normalized_allowed_html_url() -> None:
+    """Eine erlaubte HTML-URL wird normalisiert für den Crawl zurückgegeben."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=1,
+        max_pages=10,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+        tracking_parameters=["utm_source"],
+        exclude_patterns=[r"\.(?:pdf|zip)(?:$|[?#])"],
+    )
+
+    prepared_url = prepare_crawl_url(
+        "https://Example.org/page/?article=42&utm_source=newsletter#section",
+        config,
+    )
+
+    assert prepared_url == "https://example.org/page/?article=42"
+
+
+def test_prepare_crawl_url_rejects_foreign_or_excluded_url() -> None:
+    """Fremde Domains und ausgeschlossene Ressourcen werden nicht vorbereitet."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=1,
+        max_pages=10,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+        exclude_patterns=[r"\.(?:pdf|zip)(?:$|[?#])"],
+    )
+
+    assert prepare_crawl_url("https://external.example/page/", config) is None
+    assert prepare_crawl_url("https://example.org/document.pdf", config) is None

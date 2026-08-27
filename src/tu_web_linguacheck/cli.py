@@ -15,6 +15,7 @@ from tu_web_linguacheck.language_links import (
     find_translation_links,
 )
 from tu_web_linguacheck.languagetool import LanguageToolClient
+from tu_web_linguacheck.urls import prepare_crawl_url
 
 app = typer.Typer(
     help="Prüft öffentlich erreichbare Websites lokal auf sprachliche Auffälligkeiten.",
@@ -131,15 +132,44 @@ def check_text(
     typer.echo(f"Sprachfunde: {len(findings)}")
 
     for finding in findings:
+        matched_text = finding.context[finding.offset : finding.offset + finding.length]
+        end_offset = finding.offset + finding.length
+
         typer.echo(f"Kategorie: {finding.category}")
         typer.echo(f"Schweregrad: {finding.severity}")
         typer.echo(f"Regel: {finding.source_rule_id}")
         typer.echo(f"Vorschläge: {', '.join(finding.suggestions) or '-'}")
-        matched_text = finding.context[finding.offset : finding.offset + finding.length]
-        end_offset = finding.offset + finding.length
         typer.echo(f"Fundstelle: {matched_text}")
         typer.echo(f"Position: {finding.offset}–{end_offset}")
         typer.echo(f"Kontext: {finding.context}")
+
+
+@app.command()
+def check_url(
+    url: str,
+    config_path: Path,
+) -> None:
+    """Prüft genau eine erlaubte HTML-Seite mit lokalem LanguageTool."""
+    config = load_project_config(config_path)
+    prepared_url = prepare_crawl_url(url, config.crawl)
+
+    if prepared_url is None:
+        typer.echo("URL ist gemäß Crawl-Konfiguration nicht erlaubt.")
+        raise typer.Exit(code=1)
+
+    html = fetch_html(prepared_url, config.crawl.allowed_domains)
+    page_content = extract_page_content(html)
+
+    typer.echo(f"URL: {prepared_url}")
+    typer.echo(f"Titel: {page_content.title}")
+    typer.echo(f"Extrahierte Textzeichen: {len(page_content.text)}")
+
+    check_text(
+        page_content.text,
+        language=config.check.language,
+        url=prepared_url,
+        profile=config.profile,
+    )
 
 
 @app.command()
@@ -152,7 +182,7 @@ def validate_config(
     except ValidationError as error:
         typer.echo("Konfiguration ungültig.")
         typer.echo(str(error))
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from error
 
     typer.echo("Konfiguration gültig.")
     typer.echo(f"Profil: {config.profile}")

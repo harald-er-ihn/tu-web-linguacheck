@@ -4,6 +4,8 @@ import re
 from collections.abc import Sequence
 from urllib.parse import parse_qsl, urlencode, urlparse, urlsplit, urlunsplit
 
+from tu_web_linguacheck.config import CrawlConfig
+
 
 def is_allowed_url(url: str, allowed_domains: Sequence[str]) -> bool:
     """Prüft, ob eine HTTP(S)-URL zu einer erlaubten Domain gehört."""
@@ -66,3 +68,16 @@ def should_crawl_url(url: str, exclude_patterns: Sequence[str]) -> bool:
         re.search(pattern, url, flags=re.IGNORECASE) is not None
         for pattern in exclude_patterns
     )
+
+
+def prepare_crawl_url(url: str, config: CrawlConfig) -> str | None:
+    """Bereitet eine erlaubte, crawlbare URL gemäß Crawl-Konfiguration vor."""
+    normalized_url = normalize_url(url, config.tracking_parameters)
+
+    if not is_allowed_url(normalized_url, config.allowed_domains):
+        return None
+
+    if not should_crawl_url(normalized_url, config.exclude_patterns):
+        return None
+
+    return normalized_url
