@@ -24,3 +24,19 @@ def finding_from_languagetool_match(
         profile=profile,
         source_rule_id=match.rule_id,
     )
+
+
+def filter_ignored_terms(
+    findings: list[Finding],
+    *,
+    ignored_terms: list[str],
+) -> list[Finding]:
+    """Entfernt Funde mit exakt passenden lokal ignorierten Begriffen."""
+    normalized_ignored_terms = {term.casefold() for term in ignored_terms}
+
+    return [
+        finding
+        for finding in findings
+        if finding.context[finding.offset : finding.offset + finding.length].casefold()
+        not in normalized_ignored_terms
+    ]
