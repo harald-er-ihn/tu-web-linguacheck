@@ -101,3 +101,44 @@ crawl:
     assert config.profile == "generic-de"
     assert config.crawl.allowed_domains == ["qi-gong-fuer-alle.de"]
     assert config.crawl.max_depth == 1
+
+
+def test_project_config_accepts_documented_extended_configuration() -> None:
+    """Das dokumentierte vollständige Konfigurationsformat wird akzeptiert."""
+    config = ProjectConfig.model_validate(
+        {
+            "profile": "generic-de",
+            "crawl": {
+                "allowed_domains": ["example.org"],
+                "max_depth": 1,
+                "max_pages": 10,
+                "requests_per_second": 1.0,
+                "obey_robots_txt": True,
+                "strip_fragments": True,
+                "tracking_parameters": [
+                    "fbclid",
+                    "gclid",
+                    "utm_source",
+                ],
+                "exclude_patterns": [
+                    r"\.(?:pdf|zip)(?:$|[?#])",
+                    r"/wp-admin(?:/|$)",
+                ],
+            },
+            "check": {
+                "language": "de-DE",
+            },
+        }
+    )
+
+    assert config.crawl.strip_fragments is True
+    assert config.crawl.tracking_parameters == [
+        "fbclid",
+        "gclid",
+        "utm_source",
+    ]
+    assert config.crawl.exclude_patterns == [
+        r"\.(?:pdf|zip)(?:$|[?#])",
+        r"/wp-admin(?:/|$)",
+    ]
+    assert config.check.language == "de-DE"

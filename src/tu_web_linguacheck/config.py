@@ -16,6 +16,17 @@ class CrawlConfig(BaseModel):
     max_pages: int = Field(ge=1)
     requests_per_second: float = Field(gt=0)
     obey_robots_txt: bool
+    strip_fragments: bool = True
+    tracking_parameters: list[str] = Field(default_factory=list)
+    exclude_patterns: list[str] = Field(default_factory=list)
+
+
+class CheckConfig(BaseModel):
+    """Einstellungen für die lokale Sprachprüfung."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    language: str = Field(default="de-DE", min_length=1)
 
 
 class ProjectConfig(BaseModel):
@@ -25,6 +36,7 @@ class ProjectConfig(BaseModel):
 
     profile: str
     crawl: CrawlConfig
+    check: CheckConfig = Field(default_factory=CheckConfig)
 
 
 def load_project_config(path: Path) -> ProjectConfig:
