@@ -27,7 +27,7 @@ def test_extracts_title_and_visible_main_text() -> None:
 
     assert content.title == "Geschlechtergerechte Sprache | TU Dortmund"
     assert content.text == (
-        "Geschlechtergerechte Sprache Dieser Inhalt soll geprüft werden."
+        "Geschlechtergerechte Sprache\nDieser Inhalt soll geprüft werden."
     )
 
 
@@ -46,3 +46,24 @@ def test_uses_body_when_main_is_missing() -> None:
 
     assert content.title == "Ohne Hauptbereich"
     assert content.text == "Dieser Text steht im Body."
+
+
+def test_preserves_visible_block_boundaries() -> None:
+    """Überschriften und Absätze bleiben als getrennte Textblöcke erhalten."""
+    html = """
+    <html>
+      <body>
+        <main>
+          <h1>Überschrift</h1>
+          <p>Dieser Satz beginnt korrekt.</p>
+          <p>Ein weiterer korrekter Satz.</p>
+        </main>
+      </body>
+    </html>
+    """
+
+    content = extract_page_content(html)
+
+    assert content.text == (
+        "Überschrift\nDieser Satz beginnt korrekt.\nEin weiterer korrekter Satz."
+    )

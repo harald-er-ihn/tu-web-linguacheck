@@ -23,6 +23,6 @@ def extract_page_content(html: str) -> PageContent:
     for element in content_element.find_all(["nav", "footer", "script", "style"]):
         element.decompose()
 
-    text = content_element.get_text(" ", strip=True)
+    text = content_element.get_text("\n", strip=True)
 
     return PageContent(title=title, text=text)
