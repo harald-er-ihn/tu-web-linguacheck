@@ -67,3 +67,20 @@ def test_preserves_visible_block_boundaries() -> None:
     assert content.text == (
         "Überschrift\nDieser Satz beginnt korrekt.\nEin weiterer korrekter Satz."
     )
+
+
+def test_keeps_inline_text_within_one_block_together() -> None:
+    """Inline-Elemente erzeugen innerhalb eines Absatzes keine Zeilenumbrüche."""
+    html = """
+    <html>
+      <body>
+        <main>
+          <p>Das ist <strong>ein</strong> Satz<span>:</span> korrekt.</p>
+        </main>
+      </body>
+    </html>
+    """
+
+    content = extract_page_content(html)
+
+    assert content.text == "Das ist ein Satz: korrekt."
