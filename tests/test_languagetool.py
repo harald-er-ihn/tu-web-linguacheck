@@ -55,7 +55,11 @@ def test_check_sends_text_and_language_to_local_server(
                         "replacements": [
                             {"value": "ist"},
                         ],
-                        "rule": {"id": "GERMAN_SPELLER_RULE"},
+                        "rule": {
+                            "id": "GERMAN_SPELLER_RULE",
+                            "issueType": "misspelling",
+                            "category": {"id": "TYPOS"},
+                        },
                     }
                 ]
             }
@@ -89,6 +93,8 @@ def test_check_sends_text_and_language_to_local_server(
     assert match.offset == 4
     assert match.length == 5
     assert match.rule_id == "GERMAN_SPELLER_RULE"
+    assert match.category == "TYPOS"
+    assert match.issue_type == "misspelling"
     assert match.replacements == ("ist",)
 
 
@@ -106,7 +112,11 @@ def test_check_maps_empty_replacements_to_empty_tuple(
                         "offset": 0,
                         "length": 3,
                         "replacements": [],
-                        "rule": {"id": "STYLE_HINT"},
+                        "rule": {
+                            "id": "STYLE_HINT",
+                            "issueType": "style",
+                            "category": {"id": "STYLE"},
+                        },
                     }
                 ]
             }

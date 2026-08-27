@@ -25,6 +25,8 @@ class LanguageToolMatch:
     offset: int
     length: int
     rule_id: str
+    category: str
+    issue_type: str
     replacements: tuple[str, ...]
 
 
@@ -63,6 +65,8 @@ class LanguageToolClient:
                 offset=match["offset"],
                 length=match["length"],
                 rule_id=match["rule"]["id"],
+                category=match["rule"]["category"]["id"],
+                issue_type=match["rule"]["issueType"],
                 replacements=tuple(
                     replacement["value"] for replacement in match["replacements"]
                 ),
