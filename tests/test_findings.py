@@ -1,5 +1,6 @@
 """Tests für die Umwandlung von LanguageTool-Funden."""
 
+# pylint: disable=duplicate-code
 from tu_web_linguacheck.findings import finding_from_languagetool_match
 from tu_web_linguacheck.languagetool import LanguageToolMatch
 

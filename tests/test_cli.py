@@ -5,6 +5,7 @@ from typer.testing import CliRunner
 from tu_web_linguacheck.cli import app
 from tu_web_linguacheck.html_content import PageContent
 from tu_web_linguacheck.language_links import LanguageLink
+from tu_web_linguacheck.languagetool import LanguageToolMatch
 
 runner = CliRunner()
 
@@ -107,3 +108,54 @@ def test_inspect_displays_detected_translation_links(monkeypatch) -> None:
     assert "Titel: Testseite" in result.output
     assert "Extrahierte Textzeichen: 35" in result.output
     assert "Textvorschau: Dies ist ein sichtbarer Testinhalt." in result.output
+
+
+def test_check_text_displays_normalized_findings(monkeypatch) -> None:
+    """Der Check-Text-Befehl zeigt normalisierte lokale Sprachfunde an."""
+
+    def fake_check(
+        _self: object,
+        *,
+        text: str,
+        language: str,
+    ) -> list[LanguageToolMatch]:
+        assert text == "Das istf ein Test."
+        assert language == "de-DE"
+
+        return [
+            LanguageToolMatch(
+                message="Möglicher Rechtschreibfehler gefunden.",
+                offset=4,
+                length=4,
+                rule_id="GERMAN_SPELLER_RULE",
+                category="TYPOS",
+                issue_type="misspelling",
+                replacements=("ist",),
+            )
+        ]
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-text",
+            "Das istf ein Test.",
+            "--language",
+            "de-DE",
+            "--url",
+            "https://example.org/test/",
+            "--profile",
+            "generic-de",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Sprachfunde: 1" in result.output
+    assert "Kategorie: misspelling" in result.output
+    assert "Schweregrad: warning" in result.output
+    assert "Regel: GERMAN_SPELLER_RULE" in result.output
+    assert "Vorschläge: ist" in result.output

@@ -3,12 +3,14 @@
 import typer
 
 from tu_web_linguacheck import __version__
+from tu_web_linguacheck.findings import finding_from_languagetool_match
 from tu_web_linguacheck.html_content import extract_page_content
 from tu_web_linguacheck.http import fetch_html
 from tu_web_linguacheck.language_links import (
     find_allowed_page_language_links,
     find_translation_links,
 )
+from tu_web_linguacheck.languagetool import LanguageToolClient
 
 app = typer.Typer(
     help="Prüft öffentlich erreichbare Websites lokal auf sprachliche Auffälligkeiten.",
@@ -89,6 +91,46 @@ def inspect(
 
     for language_link in translation_links:
         typer.echo(f"- {language_link.href} [{language_link.detection_method}]")
+
+
+@app.command()
+def check_text(
+    text: str,
+    language: str = typer.Option(
+        ...,
+        "--language",
+        help="LanguageTool-Sprachcode, zum Beispiel de-DE oder en-US.",
+    ),
+    url: str = typer.Option(
+        ...,
+        "--url",
+        help="Herkunfts-URL für die gespeicherten Sprachfunde.",
+    ),
+    profile: str = typer.Option(
+        ...,
+        "--profile",
+        help="Prüfprofil, zum Beispiel generic-de.",
+    ),
+) -> None:
+    """Prüft Text ausschließlich mit dem lokalen LanguageTool-Server."""
+    matches = LanguageToolClient().check(text=text, language=language)
+    findings = [
+        finding_from_languagetool_match(
+            match,
+            url=url,
+            context=text,
+            profile=profile,
+        )
+        for match in matches
+    ]
+
+    typer.echo(f"Sprachfunde: {len(findings)}")
+
+    for finding in findings:
+        typer.echo(f"Kategorie: {finding.category}")
+        typer.echo(f"Schweregrad: {finding.severity}")
+        typer.echo(f"Regel: {finding.source_rule_id}")
+        typer.echo(f"Vorschläge: {', '.join(finding.suggestions) or '-'}")
 
 
 def main() -> None:
