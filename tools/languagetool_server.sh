@@ -31,6 +31,11 @@ if [[ ! -f "$SERVER_JAR" ]]; then
     exit 1
 fi
 
+if ss -ltn "sport = :$LANGUAGETOOL_PORT" | grep -q LISTEN; then
+    printf 'Port %s wird bereits verwendet.\n' "$LANGUAGETOOL_PORT" >&2
+    exit 1
+fi
+
 if [[ "${1:-}" == "--verbose" ]]; then
     exec java -cp "$SERVER_JAR" org.languagetool.server.HTTPServer \
         --port "$LANGUAGETOOL_PORT"
