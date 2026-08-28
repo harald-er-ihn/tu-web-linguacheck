@@ -454,6 +454,7 @@ def test_check_url_checks_extracted_text_blocks_separately(
         "Überschrift",
         "Im Satz steht Text.",
     ]
+    assert "Prüfblöcke: 2" in result.output
     assert "Sprachfunde: 1" in result.output
     assert "Fundstelle: Im" in result.output
     assert "Position: 12–14" in result.output

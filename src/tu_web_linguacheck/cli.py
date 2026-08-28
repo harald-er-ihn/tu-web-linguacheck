@@ -219,12 +219,14 @@ def check_url(
     typer.echo(f"Extrahierte Textzeichen: {len(page_content.text)}")
 
     findings: list[Finding] = []
+    checked_blocks = 0
     block_offset = 0
 
     for line in page_content.text.splitlines(keepends=True):
         block = line.rstrip("\r\n")
 
         if block:
+            checked_blocks += 1
             block_findings = _check_text_findings(
                 block,
                 language=config.check.language,
@@ -245,6 +247,7 @@ def check_url(
 
         block_offset += len(line)
 
+    typer.echo(f"Prüfblöcke: {checked_blocks}")
     _display_findings(findings)
 
 
