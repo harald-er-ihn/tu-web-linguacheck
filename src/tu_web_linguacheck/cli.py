@@ -18,7 +18,10 @@ from tu_web_linguacheck.language_links import (
     find_allowed_page_language_links,
     find_translation_links,
 )
-from tu_web_linguacheck.languagetool import LanguageToolClient
+from tu_web_linguacheck.languagetool import (
+    LanguageToolClient,
+    LanguageToolUnavailableError,
+)
 from tu_web_linguacheck.models import Finding
 from tu_web_linguacheck.urls import prepare_crawl_url
 
@@ -189,12 +192,16 @@ def check_text(
     ),
 ) -> None:
     """Prüft Text ausschließlich mit dem lokalen LanguageTool-Server."""
-    findings = _check_text_findings(
-        text,
-        language=language,
-        url=url,
-        profile=profile,
-    )
+    try:
+        findings = _check_text_findings(
+            text,
+            language=language,
+            url=url,
+            profile=profile,
+        )
+    except LanguageToolUnavailableError as error:
+        typer.echo(str(error))
+        raise typer.Exit(code=1) from error
     _display_findings(findings)
 
 
@@ -227,14 +234,18 @@ def check_url(
 
         if block:
             checked_blocks += 1
-            block_findings = _check_text_findings(
-                block,
-                language=config.check.language,
-                url=prepared_url,
-                profile=config.profile,
-                disabled_rule_ids=config.check.ignored_rule_ids,
-                ignored_terms=config.check.ignored_terms,
-            )
+            try:
+                block_findings = _check_text_findings(
+                    block,
+                    language=config.check.language,
+                    url=prepared_url,
+                    profile=config.profile,
+                    disabled_rule_ids=config.check.ignored_rule_ids,
+                    ignored_terms=config.check.ignored_terms,
+                )
+            except LanguageToolUnavailableError as error:
+                typer.echo(str(error))
+                raise typer.Exit(code=1) from error
             findings.extend(
                 finding.model_copy(
                     update={

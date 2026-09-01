@@ -7,7 +7,10 @@ from tu_web_linguacheck.cli import app
 from tu_web_linguacheck.config import CrawlConfig, ProjectConfig
 from tu_web_linguacheck.html_content import PageContent
 from tu_web_linguacheck.language_links import LanguageLink
-from tu_web_linguacheck.languagetool import LanguageToolMatch
+from tu_web_linguacheck.languagetool import (
+    LanguageToolMatch,
+    LanguageToolUnavailableError,
+)
 
 runner = CliRunner()
 
@@ -458,3 +461,114 @@ def test_check_url_checks_extracted_text_blocks_separately(
     assert "Sprachfunde: 1" in result.output
     assert "Fundstelle: Im" in result.output
     assert "Position: 12–14" in result.output
+
+
+def test_check_text_reports_unavailable_local_languagetool_server(
+    monkeypatch,
+) -> None:
+    """Der Check-Text-Befehl meldet einen nicht erreichbaren Dienst klar."""
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        assert text == "Ein Test."
+        assert language == "de-DE"
+        raise LanguageToolUnavailableError(
+            "Der lokale LanguageTool-Server unter 127.0.0.1:8081 ist nicht erreichbar."
+        )
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+    result = runner.invoke(
+        app,
+        [
+            "check-text",
+            "Ein Test.",
+            "--language",
+            "de-DE",
+            "--url",
+            "https://example.org/test/",
+            "--profile",
+            "generic-de",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "127.0.0.1:8081 ist nicht erreichbar." in result.output
+    assert "Traceback" not in result.output
+
+
+def test_check_url_reports_unavailable_local_languagetool_server(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Der Check-URL-Befehl meldet einen nicht erreichbaren Dienst klar."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="generic-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=1,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+
+    def fake_load_project_config(path):
+        assert path == config_path
+        return config
+
+    def fake_prepare_crawl_url(url, crawl_config):
+        assert url == "https://example.org/startseite/"
+        assert crawl_config == config.crawl
+        return "https://example.org/startseite/"
+
+    def fake_fetch_html(url, allowed_domains):
+        assert url == "https://example.org/startseite/"
+        assert allowed_domains == ["example.org"]
+        return "<html></html>"
+
+    def fake_extract_page_content(html):
+        assert html == "<html></html>"
+        return PageContent(title="Testseite", text="Ein Test.")
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        assert text == "Ein Test."
+        assert language == "de-DE"
+        raise LanguageToolUnavailableError(
+            "Der lokale LanguageTool-Server unter 127.0.0.1:8081 ist nicht erreichbar."
+        )
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        fake_load_project_config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.prepare_crawl_url",
+        fake_prepare_crawl_url,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        fake_fetch_html,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.extract_page_content",
+        fake_extract_page_content,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-url",
+            "https://example.org/startseite/",
+            str(config_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "127.0.0.1:8081 ist nicht erreichbar." in result.output
+    assert "Traceback" not in result.output
