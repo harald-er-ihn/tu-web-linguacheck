@@ -1,11 +1,20 @@
 """Interne Modelle für Ergebnisse der Sprachprüfung."""
 
+from dataclasses import dataclass
 from typing import Literal
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 Severity = Literal["error", "warning", "hint", "info"]
+
+
+@dataclass(frozen=True)
+class CrawlCandidate:
+    """Eine vorbereitete Crawl-URL mit ihrer Entfernung vom Startpunkt."""
+
+    url: str
+    depth: int
 
 
 # pylint: disable=too-few-public-methods

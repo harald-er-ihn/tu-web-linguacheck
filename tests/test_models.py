@@ -1,9 +1,11 @@
 """Tests für das interne Modell eines Sprachfunds."""
 
+from dataclasses import FrozenInstanceError
+
 import pytest
 from pydantic import ValidationError
 
-from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.models import CrawlCandidate, Finding
 
 
 def test_finding_accepts_valid_data() -> None:
@@ -146,3 +148,20 @@ def test_finding_rejects_empty_required_text_fields(field_name: str) -> None:
 
     with pytest.raises(ValidationError):
         Finding(**values)
+
+
+def test_crawl_candidate_is_immutable_value_object() -> None:
+    """Ein Crawl-Kandidat speichert URL und Tiefe unveränderlich."""
+    candidate = CrawlCandidate(
+        url="https://example.org/start/",
+        depth=2,
+    )
+
+    assert candidate.url == "https://example.org/start/"
+    assert candidate.depth == 2
+    assert candidate == CrawlCandidate(
+        url="https://example.org/start/",
+        depth=2,
+    )
+    with pytest.raises(FrozenInstanceError):
+        candidate.depth = 3
