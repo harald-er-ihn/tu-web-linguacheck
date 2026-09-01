@@ -42,7 +42,7 @@ Verbindlichkeit einer Regel.
 | `recommended` | `hint` | Empfohlene Schreibweise oder Stilregel |
 | `voluntary` | `info` | Freiwilliger Hinweis ohne Beanstandung |
 | `informational` | `info` | Hintergrundinformation |
-| `review_required` | keine automatisierte Meldung | Fachliche Prüfung steht aus |
+| `review_required` | Keine automatische Meldung | Fachliche Prüfung steht aus |
 
 ## Regelstatus
 

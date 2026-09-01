@@ -31,11 +31,11 @@ ergänzt.
 ## Änderungen einreichen
 
 1. Einen eigenen Branch anlegen.
-2. Änderung und zugehörige Tests erstellen.
-3. Tests und Ruff ausführen.
-4. Den Diff prüfen.
-5. Einen klaren, kleinen Commit erstellen.
-6. Einen Pull Request mit kurzer Beschreibung eröffnen.
+1. Änderung und zugehörige Tests erstellen.
+1. Tests und Ruff ausführen.
+1. Den Diff prüfen.
+1. Einen klaren, kleinen Commit erstellen.
+1. Einen Pull Request mit kurzer Beschreibung eröffnen.
 
 ## Sicherheits- und Crawl-Regeln
 

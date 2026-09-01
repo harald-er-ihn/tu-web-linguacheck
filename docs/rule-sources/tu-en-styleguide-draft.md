@@ -60,7 +60,7 @@ Vor einer technischen Umsetzung müssen insbesondere diese Fragen beantwortet
 werden:
 
 1. Welche amerikanischen und britischen Schreibvarianten sind konkret prüfbar?
-2. Welche Ausnahmen gelten für Zitate, Publikationstitel und externe Eigennamen?
-3. Welche unzulässigen Varianten des Universitätsnamens sollen erkannt werden?
-4. In welchen Kontexten ist eine Kurzform wie `TU Dortmund` zulässig?
-5. Wer kann Regeln für das Profil `tu-en` fachlich freigeben?
+1. Welche Ausnahmen gelten für Zitate, Publikationstitel und externe Eigennamen?
+1. Welche unzulässigen Varianten des Universitätsnamens sollen erkannt werden?
+1. In welchen Kontexten ist eine Kurzform wie `TU Dortmund` zulässig?
+1. Wer kann Regeln für das Profil `tu-en` fachlich freigeben?

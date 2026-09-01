@@ -20,12 +20,12 @@ HTML-Inhalte und prüft diese lokal. PDF-Dateien werden nicht verarbeitet.
 
 ## Geplante Prüfprofile
 
-| Profil | Zweck |
-| --- | --- |
-| `generic-de` | Deutsche private Websites: Rechtschreibung, Grammatik, Zeichensetzung und ungewöhnliche Wörter |
-| `tu-de` | Deutsche TU-Dortmund-Websites: zusätzlich Whitelists, Terminologie- und Stilregeln |
-| `tu-en` | Englische TU-Dortmund-Websites: LanguageTool mit `en-US`, TU-Terminologie und englische Stilregeln |
-
+- `generic-de`: Deutsche private Websites: Rechtschreibung, Grammatik,
+  Zeichensetzung und ungewöhnliche Wörter.
+- `tu-de`: Deutsche TU-Dortmund-Websites: zusätzlich Whitelists,
+  Terminologie- und Stilregeln.
+- `tu-en`: Englische TU-Dortmund-Websites: LanguageTool mit `en-US`,
+  TU-Terminologie und englische Stilregeln.
 ## Geplanter Technologiestack
 
 - Python 3.12

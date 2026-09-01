@@ -48,8 +48,8 @@ Vor einer technischen Umsetzung müssen insbesondere diese Fragen beantwortet
 werden:
 
 1. Welche konkreten Muster sollen als prüfbare Hinweise gelten?
-2. Welche Begriffe oder Kontexte müssen ausdrücklich ausgeschlossen werden?
-3. Wann ist der Gender*stern gegenüber dem Gender:Doppelpunkt zu bevorzugen?
-4. Welche Anforderungen zur digitalen Barrierefreiheit sind für einzelne
+1. Welche Begriffe oder Kontexte müssen ausdrücklich ausgeschlossen werden?
+1. Wann ist der Gender*stern gegenüber dem Gender:Doppelpunkt zu bevorzugen?
+1. Welche Anforderungen zur digitalen Barrierefreiheit sind für einzelne
    Schreibweisen zu berücksichtigen?
-5. Wer kann Regeln für das Profil `tu-de` fachlich freigeben?
+1. Wer kann Regeln für das Profil `tu-de` fachlich freigeben?
