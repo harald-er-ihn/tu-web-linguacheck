@@ -1,7 +1,8 @@
 """Tests für die BFS-Verwaltung kontrollierter Crawl-Kandidaten."""
+# pylint: disable=duplicate-code
 
 from tu_web_linguacheck.config import CrawlConfig
-from tu_web_linguacheck.crawler import CrawlQueue, crawl_html_pages
+from tu_web_linguacheck.crawler import CrawlQueue, crawl_html_pages, crawl_site
 from tu_web_linguacheck.models import CrawlCandidate
 
 
@@ -122,3 +123,64 @@ def test_crawl_html_pages_waits_between_page_requests() -> None:
         CrawlCandidate(url="https://example.org/about/", depth=1),
     ]
     assert requested_waits == [0.5]
+
+
+def test_crawl_site_delegates_to_secure_fetch_and_orchestrator(
+    monkeypatch,
+) -> None:
+    """Der Live-Adapter nutzt sicheren Abruf und delegiert die Crawl-Steuerung."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=1,
+        max_pages=10,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+    )
+    expected_candidates = [
+        CrawlCandidate(
+            url="https://example.org/",
+            depth=0,
+        )
+    ]
+
+    def fake_fetch_html(url: str, allowed_domains: list[str]) -> str:
+        assert url == "https://example.org/"
+        assert allowed_domains == ["example.org"]
+        return "<main></main>"
+
+    def fake_sleep(_seconds: float) -> None:
+        return None
+
+    def fake_crawl_html_pages(
+        *,
+        start_url: str,
+        config: CrawlConfig,
+        fetch_page,
+        sleep,
+    ) -> list[CrawlCandidate]:
+        assert start_url == "https://example.org/"
+        assert config.max_pages == 10
+        assert fetch_page(start_url) == "<main></main>"
+        assert sleep is fake_sleep
+        return expected_candidates
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.fetch_html",
+        fake_fetch_html,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.time.sleep",
+        fake_sleep,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.crawl_html_pages",
+        fake_crawl_html_pages,
+    )
+
+    assert (
+        crawl_site(
+            start_url="https://example.org/",
+            config=config,
+        )
+        == expected_candidates
+    )

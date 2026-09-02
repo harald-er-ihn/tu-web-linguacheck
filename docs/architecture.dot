@@ -106,7 +106,7 @@ digraph tu_web_linguacheck_architecture {
     config -> languagetool [label="Sprache"];
 
     crawler -> queue;
-    crawler -> http [label="spätere Live-Anbindung", style="dashed"];
+    crawler -> http [label="sicherer Live-Abruf"];
     crawler -> links [label="HTML"];
     links -> urls [label="Kandidaten"];
     urls -> queue [label="vorbereitete URLs"];

@@ -1,9 +1,11 @@
 """BFS-Verwaltung und Orchestrierung kontrollierter HTML-Crawls."""
 
+import time
 from collections import deque
 from collections.abc import Callable, Sequence
 
 from tu_web_linguacheck.config import CrawlConfig
+from tu_web_linguacheck.http import fetch_html
 from tu_web_linguacheck.models import CrawlCandidate
 from tu_web_linguacheck.page_links import find_crawlable_page_links
 from tu_web_linguacheck.urls import prepare_crawl_url
@@ -89,3 +91,17 @@ def crawl_html_pages(
         )
 
     return processed_candidates
+
+
+def crawl_site(
+    *,
+    start_url: str,
+    config: CrawlConfig,
+) -> list[CrawlCandidate]:
+    """Crawlt HTML-Seiten mit sicherem lokalem HTTP-Abruf."""
+    return crawl_html_pages(
+        start_url=start_url,
+        config=config,
+        fetch_page=lambda url: fetch_html(url, config.allowed_domains),
+        sleep=time.sleep,
+    )
