@@ -17,6 +17,16 @@ class CrawlCandidate:
     depth: int
 
 
+@dataclass(frozen=True)
+class CrawledPage:
+    """Eine abgerufene Seite mit extrahiertem sichtbaren Inhalt."""
+
+    url: str
+    depth: int
+    title: str
+    text: str
+
+
 # pylint: disable=too-few-public-methods
 class Finding(BaseModel):
     """Ein einzelner Fund aus einer Sprach- oder Regelprüfung."""

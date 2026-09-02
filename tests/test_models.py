@@ -5,7 +5,7 @@ from dataclasses import FrozenInstanceError
 import pytest
 from pydantic import ValidationError
 
-from tu_web_linguacheck.models import CrawlCandidate, Finding
+from tu_web_linguacheck.models import CrawlCandidate, CrawledPage, Finding
 
 
 def test_finding_accepts_valid_data() -> None:
@@ -165,3 +165,27 @@ def test_crawl_candidate_is_immutable_value_object() -> None:
     )
     with pytest.raises(FrozenInstanceError):
         candidate.depth = 3
+
+
+def test_crawled_page_is_immutable_value_object() -> None:
+    """Eine verarbeitete Crawl-Seite speichert extrahierte Werte unveränderlich."""
+    page = CrawledPage(
+        url="https://example.org/",
+        depth=1,
+        title="Beispielseite",
+        text="Sichtbarer Inhalt.",
+    )
+
+    assert page.url == "https://example.org/"
+    assert page.depth == 1
+    assert page.title == "Beispielseite"
+    assert page.text == "Sichtbarer Inhalt."
+    assert page == CrawledPage(
+        url="https://example.org/",
+        depth=1,
+        title="Beispielseite",
+        text="Sichtbarer Inhalt.",
+    )
+
+    with pytest.raises(FrozenInstanceError):
+        page.title = "Anderer Titel"
