@@ -18,6 +18,16 @@ HTML-Inhalte und prüft diese lokal. PDF-Dateien werden nicht verarbeitet.
 - robots.txt standardmäßig beachten
 - keine Website-Inhalte an externe Cloud-KI- oder Sprachprüfungs-APIs senden
 
+## Architektur
+
+Die Architekturübersicht zeigt die aktuell implementierten Komponenten und
+Sicherheitsgrenzen sowie vorgesehene spätere Berichtsbausteine.
+
+![Architektur von tu-web-linguacheck](docs/images/architecture.svg)
+
+Die bearbeitbare Diagrammquelle liegt in `docs/architecture.dot`. Das SVG wird
+lokal mit `tools/generate_architecture_diagram.sh` erzeugt.
+
 ## Geplante Prüfprofile
 
 - `generic-de`: Deutsche private Websites: Rechtschreibung, Grammatik,

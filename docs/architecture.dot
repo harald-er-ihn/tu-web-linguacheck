@@ -1,0 +1,124 @@
+digraph tu_web_linguacheck_architecture {
+    graph [
+        bgcolor="transparent",
+        rankdir="LR",
+        splines="polyline",
+        nodesep="0.5",
+        ranksep="0.8",
+        fontname="Arial"
+    ];
+
+    node [
+        shape="box",
+        style="filled,rounded",
+        color="#333333",
+        fontname="Arial",
+        fontsize="10"
+    ];
+
+    edge [
+        color="#555555",
+        fontname="Arial",
+        fontsize="9"
+    ];
+
+    cli [
+        label="CLI\nTyper",
+        fillcolor="#2B5E8F",
+        fontcolor="white"
+    ];
+
+    config [
+        label="Projektkonfiguration\nPydantic + YAML",
+        fillcolor="#D4E1F9"
+    ];
+
+    subgraph cluster_crawl {
+        label="Kontrollierter HTML-Crawl";
+        color="#2CA02C";
+        fontcolor="#2CA02C";
+        style="dashed";
+
+        crawler [
+            label="Crawl-Orchestrierung\nBFS + Seitenlimit + Rate-Limit",
+            fillcolor="#2CA02C",
+            fontcolor="white"
+        ];
+
+        queue [
+            label="CrawlQueue\nCrawlCandidate",
+            fillcolor="#E2F2E2"
+        ];
+
+        links [
+            label="page_links\nLinks aus <main>",
+            fillcolor="#E2F2E2"
+        ];
+
+        urls [
+            label="URLs\nNormalisierung + Allowlist\nAusschlussmuster",
+            fillcolor="#E2F2E2"
+        ];
+    }
+
+    http [
+        label="Sicherer HTTP-Abruf\nrobots.txt + Redirects + HTML-only\nTimeout + Größenlimit",
+        fillcolor="#83B818",
+        fontcolor="white"
+    ];
+
+    content [
+        label="HTML-Inhalt\nTitel + sichtbarer Text",
+        fillcolor="#E2A929"
+    ];
+
+    languages [
+        label="Sprachlinks\nhreflang + Umschalter",
+        fillcolor="#E2A929"
+    ];
+
+    languagetool [
+        label="Lokaler LanguageTool-Server\n127.0.0.1:8081",
+        fillcolor="#6A0DAD",
+        fontcolor="white"
+    ];
+
+    findings [
+        label="Findings\nNormalisierung + Filter",
+        fillcolor="#A0522D",
+        fontcolor="white"
+    ];
+
+    reports [
+        label="Spätere lokale Berichte",
+        fillcolor="#555555",
+        fontcolor="white",
+        shape="note"
+    ];
+
+    cli -> config;
+    cli -> crawler [label="späterer Crawl-Befehl"];
+    cli -> http [label="check-url"];
+    cli -> languagetool [label="check-text"];
+
+    config -> crawler;
+    config -> urls;
+    config -> languagetool [label="Sprache"];
+
+    crawler -> queue;
+    crawler -> http [label="spätere Live-Anbindung", style="dashed"];
+    crawler -> links [label="HTML"];
+    links -> urls [label="Kandidaten"];
+    urls -> queue [label="vorbereitete URLs"];
+
+    http -> content;
+    http -> languages;
+    content -> languagetool [label="extrahierter Text"];
+    languagetool -> findings;
+    findings -> reports;
+
+    http -> urls [
+        label="Weiterleitungsziel",
+        style="dashed"
+    ];
+}
