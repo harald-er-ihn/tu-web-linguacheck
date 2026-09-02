@@ -3,7 +3,7 @@
 # pylint: disable=duplicate-code
 from typer.testing import CliRunner
 
-from tu_web_linguacheck.cli import app
+from tu_web_linguacheck.cli import _check_page_text, app
 from tu_web_linguacheck.config import CrawlConfig, ProjectConfig
 from tu_web_linguacheck.html_content import PageContent
 from tu_web_linguacheck.language_links import LanguageLink
@@ -13,6 +13,49 @@ from tu_web_linguacheck.languagetool import (
 )
 
 runner = CliRunner()
+
+
+def test_check_page_text_checks_blocks_with_global_offsets(monkeypatch) -> None:
+    """Die Seitenprüfung verbindet Blockfunde mit dem gesamten Seitenkontext."""
+    checked_texts: list[str] = []
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        assert language == "de-DE"
+        checked_texts.append(text)
+
+        if text == "Das istf ein Test.":
+            return [
+                LanguageToolMatch(
+                    message="Testmeldung.",
+                    offset=4,
+                    length=4,
+                    rule_id="TEST_RULE",
+                    category="TEST",
+                    issue_type="misspelling",
+                    replacements=("ist",),
+                )
+            ]
+
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+
+    text = "Überschrift\nDas istf ein Test."
+    findings, checked_blocks = _check_page_text(
+        text,
+        language="de-DE",
+        url="https://example.org/startseite/",
+        profile="generic-de",
+    )
+
+    assert checked_texts == ["Überschrift", "Das istf ein Test."]
+    assert checked_blocks == 2
+    assert len(findings) == 1
+    assert findings[0].offset == 16
+    assert findings[0].context == text
 
 
 def test_help_displays_project_name_and_run_command() -> None:

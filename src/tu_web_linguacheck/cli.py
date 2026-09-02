@@ -225,38 +225,18 @@ def check_url(
     typer.echo(f"Titel: {page_content.title}")
     typer.echo(f"Extrahierte Textzeichen: {len(page_content.text)}")
 
-    findings: list[Finding] = []
-    checked_blocks = 0
-    block_offset = 0
-
-    for line in page_content.text.splitlines(keepends=True):
-        block = line.rstrip("\r\n")
-
-        if block:
-            checked_blocks += 1
-            try:
-                block_findings = _check_text_findings(
-                    block,
-                    language=config.check.language,
-                    url=prepared_url,
-                    profile=config.profile,
-                    disabled_rule_ids=config.check.ignored_rule_ids,
-                    ignored_terms=config.check.ignored_terms,
-                )
-            except LanguageToolUnavailableError as error:
-                typer.echo(str(error))
-                raise typer.Exit(code=1) from error
-            findings.extend(
-                finding.model_copy(
-                    update={
-                        "context": page_content.text,
-                        "offset": finding.offset + block_offset,
-                    }
-                )
-                for finding in block_findings
-            )
-
-        block_offset += len(line)
+    try:
+        findings, checked_blocks = _check_page_text(
+            page_content.text,
+            language=config.check.language,
+            url=prepared_url,
+            profile=config.profile,
+            disabled_rule_ids=config.check.ignored_rule_ids,
+            ignored_terms=config.check.ignored_terms,
+        )
+    except LanguageToolUnavailableError as error:
+        typer.echo(str(error))
+        raise typer.Exit(code=1) from error
 
     typer.echo(f"Prüfblöcke: {checked_blocks}")
     _display_findings(findings)
@@ -282,3 +262,45 @@ def validate_config(
 def main() -> None:
     """Startet die Kommandozeilenschnittstelle."""
     app()
+
+
+def _check_page_text(
+    text: str,
+    *,
+    language: str,
+    url: str,
+    profile: str,
+    disabled_rule_ids: Sequence[str] = (),
+    ignored_terms: Sequence[str] = (),
+) -> tuple[list[Finding], int]:
+    """Prüft nichtleere Textblöcke mit globalen Offsets und Seitenkontext."""
+    findings: list[Finding] = []
+    checked_blocks = 0
+    block_offset = 0
+
+    for line in text.splitlines(keepends=True):
+        block = line.rstrip("\r\n")
+
+        if block:
+            checked_blocks += 1
+            block_findings = _check_text_findings(
+                block,
+                language=language,
+                url=url,
+                profile=profile,
+                disabled_rule_ids=disabled_rule_ids,
+                ignored_terms=ignored_terms,
+            )
+            findings.extend(
+                finding.model_copy(
+                    update={
+                        "context": text,
+                        "offset": finding.offset + block_offset,
+                    }
+                )
+                for finding in block_findings
+            )
+
+        block_offset += len(line)
+
+    return findings, checked_blocks
