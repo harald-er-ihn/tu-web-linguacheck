@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from tu_web_linguacheck import __version__
 from tu_web_linguacheck.config import load_project_config
+from tu_web_linguacheck.crawler import crawl_pages_with_content
 from tu_web_linguacheck.findings import (
     filter_ignored_terms,
     finding_from_languagetool_match,
@@ -148,6 +149,7 @@ def _display_findings(findings: Sequence[Finding]) -> None:
     typer.echo(f"Sprachfunde: {len(findings)}")
 
     for finding in findings:
+        typer.echo(f"URL: {finding.url}")
         matched_text = finding.context[finding.offset : finding.offset + finding.length]
         end_offset = finding.offset + finding.length
 
@@ -304,3 +306,38 @@ def _check_page_text(
         block_offset += len(line)
 
     return findings, checked_blocks
+
+
+@app.command()
+def check_crawl(
+    url: str,
+    config_path: Path,
+) -> None:
+    """Crawlt erlaubte HTML-Seiten und prüft ihre sichtbaren Texte lokal."""
+    config = load_project_config(config_path)
+    pages = crawl_pages_with_content(
+        start_url=url,
+        config=config.crawl,
+    )
+    findings: list[Finding] = []
+    checked_blocks = 0
+
+    try:
+        for page in pages:
+            page_findings, page_checked_blocks = _check_page_text(
+                page.text,
+                language=config.check.language,
+                url=page.url,
+                profile=config.profile,
+                disabled_rule_ids=config.check.ignored_rule_ids,
+                ignored_terms=config.check.ignored_terms,
+            )
+            findings.extend(page_findings)
+            checked_blocks += page_checked_blocks
+    except LanguageToolUnavailableError as error:
+        typer.echo(str(error))
+        raise typer.Exit(code=1) from error
+
+    typer.echo(f"Gecrawlte Seiten: {len(pages)}")
+    typer.echo(f"Prüfblöcke: {checked_blocks}")
+    _display_findings(findings)

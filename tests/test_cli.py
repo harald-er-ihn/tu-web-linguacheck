@@ -615,3 +615,159 @@ def test_check_url_reports_unavailable_local_languagetool_server(
     assert result.exit_code == 1
     assert "127.0.0.1:8081 ist nicht erreichbar." in result.output
     assert "Traceback" not in result.output
+
+
+def test_check_crawl_checks_content_of_crawled_pages(monkeypatch, tmp_path) -> None:
+    """Der Crawl-Check prüft die sichtbaren Inhalte aller gecrawlten Seiten."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=3,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+
+    def fake_load_project_config(path):
+        assert path == config_path
+        return config
+
+    def fake_crawl_pages_with_content(*, start_url, config):
+        assert start_url == "https://example.org/"
+        assert config.max_depth == 3
+
+        return [
+            type(
+                "Page",
+                (),
+                {
+                    "url": "https://example.org/",
+                    "depth": 0,
+                    "title": "Startseite",
+                    "text": "Ein Test.",
+                },
+            )(),
+            type(
+                "Page",
+                (),
+                {
+                    "url": "https://example.org/seite/",
+                    "depth": 1,
+                    "title": "Unterseite",
+                    "text": "Noch ein Test.",
+                },
+            )(),
+        ]
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        assert language == "de-DE"
+        assert text in {"Ein Test.", "Noch ein Test."}
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        fake_load_project_config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.crawl_pages_with_content",
+        fake_crawl_pages_with_content,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-crawl",
+            "https://example.org/",
+            str(config_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Gecrawlte Seiten: 2" in result.output
+    assert "Prüfblöcke: 2" in result.output
+    assert "Sprachfunde: 0" in result.output
+
+
+def test_check_crawl_displays_url_for_each_finding(monkeypatch, tmp_path) -> None:
+    """Der Crawl-Check ordnet jeden Sprachfund seiner Seiten-URL zu."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=3,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+
+    def fake_load_project_config(path):
+        assert path == config_path
+        return config
+
+    def fake_crawl_pages_with_content(*, start_url, config):
+        assert start_url == "https://example.org/"
+        assert config.max_depth == 3
+
+        return [
+            type(
+                "Page",
+                (),
+                {
+                    "url": "https://example.org/seite/",
+                    "depth": 1,
+                    "title": "Unterseite",
+                    "text": "Das istf ein Test.",
+                },
+            )(),
+        ]
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        assert text == "Das istf ein Test."
+        assert language == "de-DE"
+
+        return [
+            LanguageToolMatch(
+                message="Testmeldung.",
+                offset=4,
+                length=4,
+                rule_id="TEST_RULE",
+                category="TEST",
+                issue_type="misspelling",
+                replacements=("ist",),
+            )
+        ]
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        fake_load_project_config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.crawl_pages_with_content",
+        fake_crawl_pages_with_content,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-crawl",
+            "https://example.org/",
+            str(config_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Sprachfunde: 1" in result.output
+    assert "URL: https://example.org/seite/" in result.output
