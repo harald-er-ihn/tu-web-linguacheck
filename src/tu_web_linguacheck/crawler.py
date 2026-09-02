@@ -1,9 +1,12 @@
-"""BFS-Verwaltung für kontrollierte Crawl-Kandidaten."""
+"""BFS-Verwaltung und Orchestrierung kontrollierter HTML-Crawls."""
 
 from collections import deque
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
+from tu_web_linguacheck.config import CrawlConfig
 from tu_web_linguacheck.models import CrawlCandidate
+from tu_web_linguacheck.page_links import find_crawlable_page_links
+from tu_web_linguacheck.urls import prepare_crawl_url
 
 
 class CrawlQueue:
@@ -44,3 +47,42 @@ class CrawlQueue:
                     depth=child_depth,
                 )
             )
+
+
+def crawl_html_pages(
+    *,
+    start_url: str,
+    config: CrawlConfig,
+    fetch_page: Callable[[str], str],
+) -> list[CrawlCandidate]:
+    """Crawlt HTML-Seiten kontrolliert über einen injizierten Abruf."""
+    prepared_start_url = prepare_crawl_url(start_url, config)
+
+    if prepared_start_url is None:
+        return []
+
+    queue = CrawlQueue(
+        start_url=prepared_start_url,
+        max_depth=config.max_depth,
+    )
+    processed_candidates: list[CrawlCandidate] = []
+
+    while len(processed_candidates) < config.max_pages:
+        candidate = queue.pop()
+
+        if candidate is None:
+            break
+
+        html = fetch_page(candidate.url)
+        processed_candidates.append(candidate)
+
+        queue.add_children(
+            parent=candidate,
+            urls=find_crawlable_page_links(
+                candidate.url,
+                html,
+                config,
+            ),
+        )
+
+    return processed_candidates
