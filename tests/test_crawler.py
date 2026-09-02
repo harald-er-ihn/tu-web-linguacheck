@@ -2,8 +2,13 @@
 # pylint: disable=duplicate-code
 
 from tu_web_linguacheck.config import CrawlConfig
-from tu_web_linguacheck.crawler import CrawlQueue, crawl_html_pages, crawl_site
-from tu_web_linguacheck.models import CrawlCandidate
+from tu_web_linguacheck.crawler import (
+    CrawlQueue,
+    crawl_html_pages,
+    crawl_pages_with_content,
+    crawl_site,
+)
+from tu_web_linguacheck.models import CrawlCandidate, CrawledPage
 
 
 def test_crawl_queue_uses_fifo_order_and_respects_maximum_depth() -> None:
@@ -184,3 +189,60 @@ def test_crawl_site_delegates_to_secure_fetch_and_orchestrator(
         )
         == expected_candidates
     )
+
+
+def test_crawl_pages_with_content_returns_extracted_crawl_results(
+    monkeypatch,
+) -> None:
+    """Der Content-Crawl verbindet Kandidaten mit einmalig abgerufenen Inhalten."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=0,
+        max_pages=1,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+    )
+
+    def fake_fetch_html(url: str, allowed_domains: list[str]) -> str:
+        assert url == "https://example.org/"
+        assert allowed_domains == ["example.org"]
+        return "<html><title>Testseite</title><main>Ein Test.</main></html>"
+
+    def fake_crawl_html_pages(
+        *,
+        start_url: str,
+        config: CrawlConfig,
+        fetch_page,
+        sleep,
+    ) -> list[CrawlCandidate]:
+        assert start_url == "https://example.org/"
+        assert config.max_pages == 1
+        assert fetch_page(start_url) == (
+            "<html><title>Testseite</title><main>Ein Test.</main></html>"
+        )
+        assert sleep is not None
+
+        return [CrawlCandidate(url=start_url, depth=0)]
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.fetch_html",
+        fake_fetch_html,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.crawl_html_pages",
+        fake_crawl_html_pages,
+    )
+
+    pages = crawl_pages_with_content(
+        start_url="https://example.org/",
+        config=config,
+    )
+
+    assert pages == [
+        CrawledPage(
+            url="https://example.org/",
+            depth=0,
+            title="Testseite",
+            text="Ein Test.",
+        )
+    ]
