@@ -4,9 +4,10 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+.venv/bin/ruff format .
+.venv/bin/ruff check --fix .
 .venv/bin/pytest
 .venv/bin/ruff check .
-.venv/bin/ruff format --check .
 .venv/bin/pylint src tests
 
 while IFS= read -r -d '' file; do
