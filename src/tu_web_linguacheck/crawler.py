@@ -54,8 +54,9 @@ def crawl_html_pages(
     start_url: str,
     config: CrawlConfig,
     fetch_page: Callable[[str], str],
+    sleep: Callable[[float], None],
 ) -> list[CrawlCandidate]:
-    """Crawlt HTML-Seiten kontrolliert über einen injizierten Abruf."""
+    """Crawlt HTML-Seiten kontrolliert mit injiziertem Abruf und Rate-Limit."""
     prepared_start_url = prepare_crawl_url(start_url, config)
 
     if prepared_start_url is None:
@@ -73,6 +74,8 @@ def crawl_html_pages(
         if candidate is None:
             break
 
+        if processed_candidates:
+            sleep(1 / config.requests_per_second)
         html = fetch_page(candidate.url)
         processed_candidates.append(candidate)
 
