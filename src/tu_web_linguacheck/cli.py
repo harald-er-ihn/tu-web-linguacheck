@@ -367,6 +367,16 @@ def check_crawl(
 ) -> None:
     """Crawlt erlaubte HTML-Seiten und prüft ihre sichtbaren Texte lokal."""
     config = load_project_config(config_path)
+
+    try:
+        LanguageToolClient().check(
+            text="",
+            language=config.check.language,
+        )
+    except LanguageToolUnavailableError as error:
+        typer.echo(str(error))
+        raise typer.Exit(code=1) from error
+
     pages = crawl_pages_with_content(
         start_url=url,
         config=config.crawl,

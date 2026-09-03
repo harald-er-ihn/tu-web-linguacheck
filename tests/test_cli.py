@@ -688,7 +688,8 @@ def test_check_crawl_checks_content_of_crawled_pages(monkeypatch, tmp_path) -> N
     checked_blocks: list[tuple[str, str]] = []
 
     def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
-        checked_blocks.append((text, language))
+        if text:
+            checked_blocks.append((text, language))
         return []
 
     monkeypatch.setattr(
@@ -774,8 +775,12 @@ def test_check_crawl_displays_url_for_each_finding(monkeypatch, tmp_path) -> Non
         ]
 
     def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
-        assert text == "Das istf ein Test."
         assert language == "de-DE"
+
+        if not text:
+            return []
+
+        assert text == "Das istf ein Test."
 
         return [
             LanguageToolMatch(
@@ -849,3 +854,59 @@ def test_check_page_blocks_uses_en_us_for_english_html_blocks(
         ("English text.", "en-US"),
         ("American English text.", "en-US"),
     ]
+
+
+def test_check_crawl_checks_languagetool_before_crawling(monkeypatch, tmp_path) -> None:
+    """Der Crawl-Check prüft LanguageTool vor dem ersten Website-Abruf."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="generic-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=1,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+
+    def fake_load_project_config(path):
+        assert path == config_path
+        return config
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        assert text == ""
+        assert language == "de-DE"
+        raise LanguageToolUnavailableError(
+            "Der lokale LanguageTool-Server unter 127.0.0.1:8081 ist nicht erreichbar."
+        )
+
+    def fail_crawl_pages_with_content(**_kwargs):
+        raise AssertionError("Der Crawl darf bei fehlendem LanguageTool nicht starten.")
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        fake_load_project_config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.crawl_pages_with_content",
+        fail_crawl_pages_with_content,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-crawl",
+            "https://example.org/",
+            str(config_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "127.0.0.1:8081 ist nicht erreichbar." in result.output
+    assert "Crawle Seite" not in result.output
+    assert "Traceback" not in result.output
