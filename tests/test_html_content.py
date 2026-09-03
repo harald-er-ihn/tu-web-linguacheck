@@ -84,3 +84,28 @@ def test_keeps_inline_text_within_one_block_together() -> None:
     content = extract_page_content(html)
 
     assert content.text == "Das ist ein Satz: korrekt."
+
+
+def test_extracts_visible_blocks_with_inherited_html_language() -> None:
+    """Sichtbare Textblöcke übernehmen das Sprachattribut eines Vorfahren."""
+    html = """
+    <html lang="de">
+      <body>
+        <main>
+          <p>Deutscher Text.</p>
+          <section lang="en">
+            <h2>English</h2>
+            <p>English text.</p>
+          </section>
+        </main>
+      </body>
+    </html>
+    """
+
+    content = extract_page_content(html)
+
+    assert [(block.text, block.language) for block in content.blocks] == [
+        ("Deutscher Text.", "de"),
+        ("English", "en"),
+        ("English text.", "en"),
+    ]
