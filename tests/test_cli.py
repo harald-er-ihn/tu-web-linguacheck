@@ -803,6 +803,7 @@ def test_check_page_blocks_uses_en_us_for_english_html_blocks(
         (
             TextBlock(text="Deutscher Text.", language="de"),
             TextBlock(text="English text.", language="en"),
+            TextBlock(text="American English text.", language="en-US"),
         ),
         language="de-DE",
         url="https://example.org/startseite/",
@@ -810,8 +811,9 @@ def test_check_page_blocks_uses_en_us_for_english_html_blocks(
     )
 
     assert not findings
-    assert checked_blocks == 2
+    assert checked_blocks == 3
     assert checked_languages == [
         ("Deutscher Text.", "de-DE"),
         ("English text.", "en-US"),
+        ("American English text.", "en-US"),
     ]
