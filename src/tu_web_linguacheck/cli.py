@@ -370,6 +370,9 @@ def check_crawl(
     pages = crawl_pages_with_content(
         start_url=url,
         config=config.crawl,
+        on_progress=lambda number, candidate: typer.echo(
+            f"Crawle Seite {number}/{config.crawl.max_pages}: {candidate.url}"
+        ),
     )
     findings: list[Finding] = []
     checked_blocks = 0

@@ -163,9 +163,11 @@ def test_crawl_site_delegates_to_secure_fetch_and_orchestrator(
         config: CrawlConfig,
         fetch_page,
         sleep,
+        on_progress=None,
     ) -> list[CrawlCandidate]:
         assert start_url == "https://example.org/"
         assert config.max_pages == 10
+        assert on_progress is None
         assert fetch_page(start_url) == "<main></main>"
         assert sleep is fake_sleep
         return expected_candidates
@@ -219,9 +221,11 @@ def test_crawl_pages_with_content_returns_extracted_crawl_results(
         config: CrawlConfig,
         fetch_page,
         sleep,
+        on_progress,
     ) -> list[CrawlCandidate]:
         assert start_url == "https://example.org/"
         assert config.max_pages == 1
+        assert on_progress is None
         assert fetch_page(start_url) == (
             '<html lang="de"><title>Testseite</title><main>'
             '<p>Ein Test.</p><p lang="en">English text.</p>'
@@ -257,3 +261,83 @@ def test_crawl_pages_with_content_returns_extracted_crawl_results(
             ),
         )
     ]
+
+
+def test_crawl_html_pages_reports_progress_before_each_request() -> None:
+    """Der Crawl meldet vor jedem Seitenabruf Nummer und Kandidat."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=1,
+        max_pages=2,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+    )
+    html_by_url = {
+        "https://example.org/": '<main><a href="/about/">Über uns</a></main>',
+        "https://example.org/about/": "<main>Über uns</main>",
+    }
+    progress_events: list[tuple[int, CrawlCandidate]] = []
+
+    crawl_html_pages(
+        start_url="https://example.org/",
+        config=config,
+        fetch_page=html_by_url.__getitem__,
+        sleep=lambda _seconds: None,
+        on_progress=lambda number, candidate: progress_events.append(
+            (number, candidate)
+        ),
+    )
+
+    assert progress_events == [
+        (1, CrawlCandidate(url="https://example.org/", depth=0)),
+        (2, CrawlCandidate(url="https://example.org/about/", depth=1)),
+    ]
+
+
+def test_crawl_pages_with_content_forwards_progress_callback(monkeypatch) -> None:
+    """Der Content-Crawl leitet Fortschrittsmeldungen an den HTML-Crawl weiter."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=0,
+        max_pages=1,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+    )
+    reported_events: list[tuple[int, CrawlCandidate]] = []
+    expected_candidate = CrawlCandidate(url="https://example.org/", depth=0)
+
+    def fake_crawl_html_pages(
+        *,
+        start_url,
+        config,
+        fetch_page,
+        sleep,
+        on_progress,
+    ):
+        assert start_url == "https://example.org/"
+        assert config.max_pages == 1
+        assert fetch_page(start_url) == "<main>Ein Test.</main>"
+        assert sleep is not None
+        assert on_progress is not None
+        on_progress(1, expected_candidate)
+
+        return [expected_candidate]
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.fetch_html",
+        lambda _url, _domains: "<main>Ein Test.</main>",
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.crawl_html_pages",
+        fake_crawl_html_pages,
+    )
+
+    crawl_pages_with_content(
+        start_url="https://example.org/",
+        config=config,
+        on_progress=lambda number, candidate: reported_events.append(
+            (number, candidate)
+        ),
+    )
+
+    assert reported_events == [(1, expected_candidate)]

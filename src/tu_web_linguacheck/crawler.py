@@ -58,6 +58,7 @@ def crawl_html_pages(
     config: CrawlConfig,
     fetch_page: Callable[[str], str],
     sleep: Callable[[float], None],
+    on_progress: Callable[[int, CrawlCandidate], None] | None = None,
 ) -> list[CrawlCandidate]:
     """Crawlt HTML-Seiten kontrolliert mit injiziertem Abruf und Rate-Limit."""
     prepared_start_url = prepare_crawl_url(start_url, config)
@@ -79,6 +80,8 @@ def crawl_html_pages(
 
         if processed_candidates:
             sleep(1 / config.requests_per_second)
+        if on_progress is not None:
+            on_progress(len(processed_candidates) + 1, candidate)
         html = fetch_page(candidate.url)
         processed_candidates.append(candidate)
 
@@ -112,6 +115,7 @@ def crawl_pages_with_content(
     *,
     start_url: str,
     config: CrawlConfig,
+    on_progress: Callable[[int, CrawlCandidate], None] | None = None,
 ) -> list[CrawledPage]:
     """Crawlt Seiten und gibt ihre einmalig extrahierten Inhalte zurück."""
     extracted_content: dict[str, tuple[str, str, tuple[TextBlock, ...]]] = {}
@@ -131,6 +135,7 @@ def crawl_pages_with_content(
         config=config,
         fetch_page=fetch_page,
         sleep=time.sleep,
+        on_progress=on_progress,
     )
 
     return [
