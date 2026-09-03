@@ -3,6 +3,7 @@
 import time
 from collections import deque
 from collections.abc import Callable, Sequence
+from urllib.error import URLError
 
 from tu_web_linguacheck.config import CrawlConfig
 from tu_web_linguacheck.html_content import TextBlock, extract_page_content
@@ -52,6 +53,7 @@ class CrawlQueue:
             )
 
 
+# pylint: disable=too-many-arguments
 def crawl_html_pages(
     *,
     start_url: str,
@@ -59,6 +61,7 @@ def crawl_html_pages(
     fetch_page: Callable[[str], str],
     sleep: Callable[[float], None],
     on_progress: Callable[[int, CrawlCandidate], None] | None = None,
+    on_error: Callable[[CrawlCandidate, Exception], None] | None = None,
 ) -> list[CrawlCandidate]:
     """Crawlt HTML-Seiten kontrolliert mit injiziertem Abruf und Rate-Limit."""
     prepared_start_url = prepare_crawl_url(start_url, config)
@@ -82,7 +85,13 @@ def crawl_html_pages(
             sleep(1 / config.requests_per_second)
         if on_progress is not None:
             on_progress(len(processed_candidates) + 1, candidate)
-        html = fetch_page(candidate.url)
+        try:
+            html = fetch_page(candidate.url)
+        except (TimeoutError, URLError) as error:
+            if on_error is not None:
+                on_error(candidate, error)
+            continue
+
         processed_candidates.append(candidate)
 
         queue.add_children(
@@ -116,6 +125,7 @@ def crawl_pages_with_content(
     start_url: str,
     config: CrawlConfig,
     on_progress: Callable[[int, CrawlCandidate], None] | None = None,
+    on_error: Callable[[CrawlCandidate, Exception], None] | None = None,
 ) -> list[CrawledPage]:
     """Crawlt Seiten und gibt ihre einmalig extrahierten Inhalte zurück."""
     extracted_content: dict[str, tuple[str, str, tuple[TextBlock, ...]]] = {}
@@ -136,6 +146,7 @@ def crawl_pages_with_content(
         fetch_page=fetch_page,
         sleep=time.sleep,
         on_progress=on_progress,
+        on_error=on_error,
     )
 
     return [

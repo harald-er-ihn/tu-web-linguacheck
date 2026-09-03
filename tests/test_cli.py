@@ -638,12 +638,26 @@ def test_check_crawl_checks_content_of_crawled_pages(monkeypatch, tmp_path) -> N
         assert path == config_path
         return config
 
-    def fake_crawl_pages_with_content(*, start_url, config, on_progress):
+    def fake_crawl_pages_with_content(
+        *,
+        start_url,
+        config,
+        on_progress,
+        on_error,
+    ):
         assert start_url == "https://example.org/"
         assert config.max_depth == 3
         on_progress(
             1,
             type("Candidate", (), {"url": "https://example.org/", "depth": 0})(),
+        )
+        on_error(
+            type(
+                "Candidate",
+                (),
+                {"url": "https://example.org/slow/", "depth": 1},
+            )(),
+            TimeoutError("Zeitüberschreitung"),
         )
 
         return [
@@ -701,6 +715,11 @@ def test_check_crawl_checks_content_of_crawled_pages(monkeypatch, tmp_path) -> N
 
     assert result.exit_code == 0
     assert "Crawle Seite 1/10: https://example.org/" in result.output
+    assert (
+        "Überspringe Seite wegen Abruffehler: "
+        "https://example.org/slow/ (Zeitüberschreitung)"
+    ) in result.output
+    assert "Traceback" not in result.output
     assert checked_blocks == [
         ("Ein Test.", "de-DE"),
         ("English text.", "en-US"),
@@ -728,10 +747,17 @@ def test_check_crawl_displays_url_for_each_finding(monkeypatch, tmp_path) -> Non
         assert path == config_path
         return config
 
-    def fake_crawl_pages_with_content(*, start_url, config, on_progress):
+    def fake_crawl_pages_with_content(
+        *,
+        start_url,
+        config,
+        on_progress,
+        on_error,
+    ):
         assert start_url == "https://example.org/"
         assert config.max_depth == 3
         assert on_progress is not None
+        assert on_error is not None
 
         return [
             type(

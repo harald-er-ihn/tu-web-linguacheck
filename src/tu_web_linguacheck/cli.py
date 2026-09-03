@@ -373,6 +373,9 @@ def check_crawl(
         on_progress=lambda number, candidate: typer.echo(
             f"Crawle Seite {number}/{config.crawl.max_pages}: {candidate.url}"
         ),
+        on_error=lambda candidate, error: typer.echo(
+            f"Überspringe Seite wegen Abruffehler: {candidate.url} ({error})"
+        ),
     )
     findings: list[Finding] = []
     checked_blocks = 0

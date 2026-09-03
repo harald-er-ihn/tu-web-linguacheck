@@ -1,5 +1,5 @@
 """Tests für die BFS-Verwaltung kontrollierter Crawl-Kandidaten."""
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,too-many-arguments
 
 from tu_web_linguacheck.config import CrawlConfig
 from tu_web_linguacheck.crawler import (
@@ -222,10 +222,12 @@ def test_crawl_pages_with_content_returns_extracted_crawl_results(
         fetch_page,
         sleep,
         on_progress,
+        on_error,
     ) -> list[CrawlCandidate]:
         assert start_url == "https://example.org/"
         assert config.max_pages == 1
         assert on_progress is None
+        assert on_error is None
         assert fetch_page(start_url) == (
             '<html lang="de"><title>Testseite</title><main>'
             '<p>Ein Test.</p><p lang="en">English text.</p>'
@@ -313,9 +315,11 @@ def test_crawl_pages_with_content_forwards_progress_callback(monkeypatch) -> Non
         fetch_page,
         sleep,
         on_progress,
+        on_error,
     ):
         assert start_url == "https://example.org/"
         assert config.max_pages == 1
+        assert on_error is None
         assert fetch_page(start_url) == "<main>Ein Test.</main>"
         assert sleep is not None
         assert on_progress is not None
@@ -341,3 +345,101 @@ def test_crawl_pages_with_content_forwards_progress_callback(monkeypatch) -> Non
     )
 
     assert reported_events == [(1, expected_candidate)]
+
+
+def test_crawl_html_pages_continues_after_timeout_and_reports_error() -> None:
+    """Der Crawl überspringt Timeouts und verarbeitet weitere Kandidaten."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=1,
+        max_pages=3,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+    )
+    html_by_url = {
+        "https://example.org/": (
+            '<main><a href="/slow/">Langsam</a><a href="/about/">Über uns</a></main>'
+        ),
+        "https://example.org/about/": "<main>Über uns</main>",
+    }
+    reported_errors: list[tuple[CrawlCandidate, Exception]] = []
+
+    def fetch_page(url: str) -> str:
+        if url == "https://example.org/slow/":
+            raise TimeoutError("Zeitüberschreitung")
+
+        return html_by_url[url]
+
+    candidates = crawl_html_pages(
+        start_url="https://example.org/",
+        config=config,
+        fetch_page=fetch_page,
+        sleep=lambda _seconds: None,
+        on_error=lambda candidate, error: reported_errors.append((candidate, error)),
+    )
+
+    assert candidates == [
+        CrawlCandidate(url="https://example.org/", depth=0),
+        CrawlCandidate(url="https://example.org/about/", depth=1),
+    ]
+    assert len(reported_errors) == 1
+    candidate, error = reported_errors[0]
+    assert candidate == CrawlCandidate(
+        url="https://example.org/slow/",
+        depth=1,
+    )
+    assert isinstance(error, TimeoutError)
+    assert str(error) == "Zeitüberschreitung"
+
+
+def test_crawl_pages_with_content_forwards_error_callback(monkeypatch) -> None:
+    """Der Content-Crawl leitet Abruffehler an den HTML-Crawl weiter."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=0,
+        max_pages=1,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+    )
+    reported_errors: list[tuple[CrawlCandidate, Exception]] = []
+    expected_candidate = CrawlCandidate(url="https://example.org/", depth=0)
+
+    def fake_crawl_html_pages(
+        *,
+        start_url,
+        config,
+        fetch_page,
+        sleep,
+        on_progress,
+        on_error,
+    ):
+        assert start_url == "https://example.org/"
+        assert config.max_pages == 1
+        assert fetch_page(start_url) == "<main>Ein Test.</main>"
+        assert sleep is not None
+        assert on_progress is None
+        assert on_error is not None
+        on_error(expected_candidate, TimeoutError("Zeitüberschreitung"))
+
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.fetch_html",
+        lambda _url, _domains: "<main>Ein Test.</main>",
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.crawl_html_pages",
+        fake_crawl_html_pages,
+    )
+
+    crawl_pages_with_content(
+        start_url="https://example.org/",
+        config=config,
+        on_error=lambda candidate, error: reported_errors.append((candidate, error)),
+    )
+
+    assert len(reported_errors) == 1
+    candidate, error = reported_errors[0]
+    assert candidate == expected_candidate
+    assert isinstance(error, TimeoutError)
+    assert str(error) == "Zeitüberschreitung"
