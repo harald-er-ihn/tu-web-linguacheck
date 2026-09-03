@@ -6,6 +6,8 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from tu_web_linguacheck.html_content import TextBlock
+
 Severity = Literal["error", "warning", "hint", "info"]
 
 
@@ -25,6 +27,7 @@ class CrawledPage:
     depth: int
     title: str
     text: str
+    blocks: tuple[TextBlock, ...] = ()
 
 
 # pylint: disable=too-few-public-methods

@@ -3,9 +3,9 @@
 # pylint: disable=duplicate-code
 from typer.testing import CliRunner
 
-from tu_web_linguacheck.cli import _check_page_text, app
+from tu_web_linguacheck.cli import _check_page_blocks, _check_page_text, app
 from tu_web_linguacheck.config import CrawlConfig, ProjectConfig
-from tu_web_linguacheck.html_content import PageContent
+from tu_web_linguacheck.html_content import PageContent, TextBlock
 from tu_web_linguacheck.language_links import LanguageLink
 from tu_web_linguacheck.languagetool import (
     LanguageToolMatch,
@@ -422,7 +422,7 @@ def test_check_url_checks_extracted_text_blocks_separately(
         ),
     )
 
-    checked_texts: list[str] = []
+    checked_blocks: list[tuple[str, str]] = []
 
     def fake_load_project_config(path):
         assert path == config_path
@@ -443,14 +443,17 @@ def test_check_url_checks_extracted_text_blocks_separately(
 
         return PageContent(
             title="Testseite",
-            text="Überschrift\nIm Satz steht Text.",
+            text="Überschrift\nEnglish text.",
+            blocks=(
+                TextBlock(text="Überschrift", language="de"),
+                TextBlock(text="English text.", language="en"),
+            ),
         )
 
     def fake_check(_self, *, text, language):
-        assert language == "de-DE"
-        checked_texts.append(text)
+        checked_blocks.append((text, language))
 
-        if text == "Im Satz steht Text.":
+        if text == "Überschrift":
             return [
                 LanguageToolMatch(
                     message="Testmeldung.",
@@ -496,14 +499,14 @@ def test_check_url_checks_extracted_text_blocks_separately(
     )
 
     assert result.exit_code == 0
-    assert checked_texts == [
-        "Überschrift",
-        "Im Satz steht Text.",
+    assert checked_blocks == [
+        ("Überschrift", "de-DE"),
+        ("English text.", "en-US"),
     ]
     assert "Prüfblöcke: 2" in result.output
     assert "Sprachfunde: 1" in result.output
-    assert "Fundstelle: Im" in result.output
-    assert "Position: 12–14" in result.output
+    assert "Fundstelle: Üb" in result.output
+    assert "Position: 0–2" in result.output
 
 
 def test_check_text_reports_unavailable_local_languagetool_server(
@@ -648,6 +651,7 @@ def test_check_crawl_checks_content_of_crawled_pages(monkeypatch, tmp_path) -> N
                     "depth": 0,
                     "title": "Startseite",
                     "text": "Ein Test.",
+                    "blocks": (TextBlock(text="Ein Test.", language="de"),),
                 },
             )(),
             type(
@@ -657,14 +661,16 @@ def test_check_crawl_checks_content_of_crawled_pages(monkeypatch, tmp_path) -> N
                     "url": "https://example.org/seite/",
                     "depth": 1,
                     "title": "Unterseite",
-                    "text": "Noch ein Test.",
+                    "text": "English text.",
+                    "blocks": (TextBlock(text="English text.", language="en"),),
                 },
             )(),
         ]
 
+    checked_blocks: list[tuple[str, str]] = []
+
     def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
-        assert language == "de-DE"
-        assert text in {"Ein Test.", "Noch ein Test."}
+        checked_blocks.append((text, language))
         return []
 
     monkeypatch.setattr(
@@ -690,6 +696,10 @@ def test_check_crawl_checks_content_of_crawled_pages(monkeypatch, tmp_path) -> N
     )
 
     assert result.exit_code == 0
+    assert checked_blocks == [
+        ("Ein Test.", "de-DE"),
+        ("English text.", "en-US"),
+    ]
     assert "Gecrawlte Seiten: 2" in result.output
     assert "Prüfblöcke: 2" in result.output
     assert "Sprachfunde: 0" in result.output
@@ -726,6 +736,7 @@ def test_check_crawl_displays_url_for_each_finding(monkeypatch, tmp_path) -> Non
                     "depth": 1,
                     "title": "Unterseite",
                     "text": "Das istf ein Test.",
+                    "blocks": (),
                 },
             )(),
         ]
@@ -771,3 +782,36 @@ def test_check_crawl_displays_url_for_each_finding(monkeypatch, tmp_path) -> Non
     assert result.exit_code == 0
     assert "Sprachfunde: 1" in result.output
     assert "URL: https://example.org/seite/" in result.output
+
+
+def test_check_page_blocks_uses_en_us_for_english_html_blocks(
+    monkeypatch,
+) -> None:
+    """Englische HTML-Blöcke werden mit dem en-US-Prüfcode geprüft."""
+    checked_languages: list[tuple[str, str]] = []
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        checked_languages.append((text, language))
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+
+    findings, checked_blocks = _check_page_blocks(
+        (
+            TextBlock(text="Deutscher Text.", language="de"),
+            TextBlock(text="English text.", language="en"),
+        ),
+        language="de-DE",
+        url="https://example.org/startseite/",
+        profile="generic-de",
+    )
+
+    assert not findings
+    assert checked_blocks == 2
+    assert checked_languages == [
+        ("Deutscher Text.", "de-DE"),
+        ("English text.", "en-US"),
+    ]

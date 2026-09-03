@@ -8,6 +8,7 @@ from tu_web_linguacheck.crawler import (
     crawl_pages_with_content,
     crawl_site,
 )
+from tu_web_linguacheck.html_content import TextBlock
 from tu_web_linguacheck.models import CrawlCandidate, CrawledPage
 
 
@@ -206,7 +207,11 @@ def test_crawl_pages_with_content_returns_extracted_crawl_results(
     def fake_fetch_html(url: str, allowed_domains: list[str]) -> str:
         assert url == "https://example.org/"
         assert allowed_domains == ["example.org"]
-        return "<html><title>Testseite</title><main>Ein Test.</main></html>"
+        return (
+            '<html lang="de"><title>Testseite</title><main>'
+            '<p>Ein Test.</p><p lang="en">English text.</p>'
+            "</main></html>"
+        )
 
     def fake_crawl_html_pages(
         *,
@@ -218,7 +223,9 @@ def test_crawl_pages_with_content_returns_extracted_crawl_results(
         assert start_url == "https://example.org/"
         assert config.max_pages == 1
         assert fetch_page(start_url) == (
-            "<html><title>Testseite</title><main>Ein Test.</main></html>"
+            '<html lang="de"><title>Testseite</title><main>'
+            '<p>Ein Test.</p><p lang="en">English text.</p>'
+            "</main></html>"
         )
         assert sleep is not None
 
@@ -243,6 +250,10 @@ def test_crawl_pages_with_content_returns_extracted_crawl_results(
             url="https://example.org/",
             depth=0,
             title="Testseite",
-            text="Ein Test.",
+            text="Ein Test.\nEnglish text.",
+            blocks=(
+                TextBlock(text="Ein Test.", language="de"),
+                TextBlock(text="English text.", language="en"),
+            ),
         )
     ]

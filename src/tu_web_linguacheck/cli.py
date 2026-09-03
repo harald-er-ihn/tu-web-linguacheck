@@ -13,7 +13,7 @@ from tu_web_linguacheck.findings import (
     filter_ignored_terms,
     finding_from_languagetool_match,
 )
-from tu_web_linguacheck.html_content import extract_page_content
+from tu_web_linguacheck.html_content import TextBlock, extract_page_content
 from tu_web_linguacheck.http import fetch_html
 from tu_web_linguacheck.language_links import (
     find_allowed_page_language_links,
@@ -228,14 +228,24 @@ def check_url(
     typer.echo(f"Extrahierte Textzeichen: {len(page_content.text)}")
 
     try:
-        findings, checked_blocks = _check_page_text(
-            page_content.text,
-            language=config.check.language,
-            url=prepared_url,
-            profile=config.profile,
-            disabled_rule_ids=config.check.ignored_rule_ids,
-            ignored_terms=config.check.ignored_terms,
-        )
+        if page_content.blocks:
+            findings, checked_blocks = _check_page_blocks(
+                page_content.blocks,
+                language=config.check.language,
+                url=prepared_url,
+                profile=config.profile,
+                disabled_rule_ids=config.check.ignored_rule_ids,
+                ignored_terms=config.check.ignored_terms,
+            )
+        else:
+            findings, checked_blocks = _check_page_text(
+                page_content.text,
+                language=config.check.language,
+                url=prepared_url,
+                profile=config.profile,
+                disabled_rule_ids=config.check.ignored_rule_ids,
+                ignored_terms=config.check.ignored_terms,
+            )
     except LanguageToolUnavailableError as error:
         typer.echo(str(error))
         raise typer.Exit(code=1) from error
@@ -308,6 +318,44 @@ def _check_page_text(
     return findings, checked_blocks
 
 
+def _check_page_blocks(
+    blocks: tuple[TextBlock, ...],
+    *,
+    language: str,
+    url: str,
+    profile: str,
+    disabled_rule_ids: Sequence[str] = (),
+    ignored_terms: Sequence[str] = (),
+) -> tuple[list[Finding], int]:
+    """Prüft Textblöcke mit ihrer HTML-Sprache und globalen Offsets."""
+    findings: list[Finding] = []
+    context = "\n".join(block.text for block in blocks)
+    block_offset = 0
+
+    for block in blocks:
+        block_language = "en-US" if block.language == "en" else language
+        block_findings = _check_text_findings(
+            block.text,
+            language=block_language,
+            url=url,
+            profile=profile,
+            disabled_rule_ids=disabled_rule_ids,
+            ignored_terms=ignored_terms,
+        )
+        findings.extend(
+            finding.model_copy(
+                update={
+                    "context": context,
+                    "offset": finding.offset + block_offset,
+                }
+            )
+            for finding in block_findings
+        )
+        block_offset += len(block.text) + 1
+
+    return findings, len(blocks)
+
+
 @app.command()
 def check_crawl(
     url: str,
@@ -324,14 +372,24 @@ def check_crawl(
 
     try:
         for page in pages:
-            page_findings, page_checked_blocks = _check_page_text(
-                page.text,
-                language=config.check.language,
-                url=page.url,
-                profile=config.profile,
-                disabled_rule_ids=config.check.ignored_rule_ids,
-                ignored_terms=config.check.ignored_terms,
-            )
+            if page.blocks:
+                page_findings, page_checked_blocks = _check_page_blocks(
+                    page.blocks,
+                    language=config.check.language,
+                    url=page.url,
+                    profile=config.profile,
+                    disabled_rule_ids=config.check.ignored_rule_ids,
+                    ignored_terms=config.check.ignored_terms,
+                )
+            else:
+                page_findings, page_checked_blocks = _check_page_text(
+                    page.text,
+                    language=config.check.language,
+                    url=page.url,
+                    profile=config.profile,
+                    disabled_rule_ids=config.check.ignored_rule_ids,
+                    ignored_terms=config.check.ignored_terms,
+                )
             findings.extend(page_findings)
             checked_blocks += page_checked_blocks
     except LanguageToolUnavailableError as error:

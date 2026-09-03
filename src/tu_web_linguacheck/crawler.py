@@ -5,7 +5,7 @@ from collections import deque
 from collections.abc import Callable, Sequence
 
 from tu_web_linguacheck.config import CrawlConfig
-from tu_web_linguacheck.html_content import extract_page_content
+from tu_web_linguacheck.html_content import TextBlock, extract_page_content
 from tu_web_linguacheck.http import fetch_html
 from tu_web_linguacheck.models import CrawlCandidate, CrawledPage
 from tu_web_linguacheck.page_links import find_crawlable_page_links
@@ -114,12 +114,16 @@ def crawl_pages_with_content(
     config: CrawlConfig,
 ) -> list[CrawledPage]:
     """Crawlt Seiten und gibt ihre einmalig extrahierten Inhalte zurück."""
-    extracted_content: dict[str, tuple[str, str]] = {}
+    extracted_content: dict[str, tuple[str, str, tuple[TextBlock, ...]]] = {}
 
     def fetch_page(url: str) -> str:
         html = fetch_html(url, config.allowed_domains)
         page_content = extract_page_content(html)
-        extracted_content[url] = (page_content.title, page_content.text)
+        extracted_content[url] = (
+            page_content.title,
+            page_content.text,
+            page_content.blocks,
+        )
         return html
 
     candidates = crawl_html_pages(
@@ -135,6 +139,7 @@ def crawl_pages_with_content(
             depth=candidate.depth,
             title=extracted_content[candidate.url][0],
             text=extracted_content[candidate.url][1],
+            blocks=extracted_content[candidate.url][2],
         )
         for candidate in candidates
     ]
