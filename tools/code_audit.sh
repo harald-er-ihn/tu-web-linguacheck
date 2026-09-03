@@ -9,6 +9,7 @@ cd "$PROJECT_ROOT"
 .venv/bin/pytest
 .venv/bin/ruff check .
 .venv/bin/pylint src tests
+.venv/bin/xenon --max-absolute B --max-modules B --max-average A src
 
 while IFS= read -r -d '' file; do
     echo "Checking: $file"
