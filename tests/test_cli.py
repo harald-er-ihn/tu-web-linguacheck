@@ -1,6 +1,8 @@
 """Tests für die Kommandozeilenschnittstelle."""
 
 # pylint: disable=duplicate-code
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from tu_web_linguacheck.cli import _check_page_blocks, _check_page_text, app
@@ -11,6 +13,7 @@ from tu_web_linguacheck.languagetool import (
     LanguageToolMatch,
     LanguageToolUnavailableError,
 )
+from tu_web_linguacheck.models import Finding
 
 runner = CliRunner()
 
@@ -910,3 +913,76 @@ def test_check_crawl_checks_languagetool_before_crawling(monkeypatch, tmp_path) 
     assert "127.0.0.1:8081 ist nicht erreichbar." in result.output
     assert "Crawle Seite" not in result.output
     assert "Traceback" not in result.output
+
+
+def test_check_crawl_writes_html_report(monkeypatch, tmp_path) -> None:
+    """Der Crawl-Check schreibt auf Wunsch einen HTML-Bericht."""
+    config_path = tmp_path / "config.yaml"
+    report_path = tmp_path / "crawl-report.html"
+    config = ProjectConfig(
+        profile="generic-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=1,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+    written_reports: list[tuple[Path, int, int, list[Finding]]] = []
+
+    def fake_load_project_config(path):
+        assert path == config_path
+        return config
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        assert language == "de-DE"
+
+        if not text:
+            return []
+
+        return []
+
+    def fake_crawl_pages_with_content(**_kwargs):
+        return []
+
+    def fake_write_html_report(
+        path: Path,
+        *,
+        crawled_pages: int,
+        checked_blocks: int,
+        findings: list[Finding],
+    ) -> None:
+        written_reports.append((path, crawled_pages, checked_blocks, findings))
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        fake_load_project_config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.crawl_pages_with_content",
+        fake_crawl_pages_with_content,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.write_html_report",
+        fake_write_html_report,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-crawl",
+            "https://example.org/",
+            str(config_path),
+            "--report",
+            str(report_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert written_reports == [(report_path, 0, 0, [])]
+    assert f"HTML-Bericht: {report_path}" in result.output

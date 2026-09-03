@@ -24,6 +24,7 @@ from tu_web_linguacheck.languagetool import (
     LanguageToolUnavailableError,
 )
 from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.report import write_html_report
 from tu_web_linguacheck.urls import prepare_crawl_url
 
 app = typer.Typer(
@@ -364,6 +365,11 @@ def _check_page_blocks(
 def check_crawl(
     url: str,
     config_path: Path,
+    report_path: Path | None = typer.Option(
+        None,
+        "--report",
+        help="Schreibt einen HTML-Bericht in die angegebene Datei.",
+    ),
 ) -> None:
     """Crawlt erlaubte HTML-Seiten und prüft ihre sichtbaren Texte lokal."""
     config = load_project_config(config_path)
@@ -419,3 +425,12 @@ def check_crawl(
     typer.echo(f"Gecrawlte Seiten: {len(pages)}")
     typer.echo(f"Prüfblöcke: {checked_blocks}")
     _display_findings(findings)
+
+    if report_path is not None:
+        write_html_report(
+            report_path,
+            crawled_pages=len(pages),
+            checked_blocks=checked_blocks,
+            findings=findings,
+        )
+        typer.echo(f"HTML-Bericht: {report_path}")
