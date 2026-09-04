@@ -13,7 +13,7 @@ cd "$PROJECT_ROOT"
 
 while IFS= read -r -d '' file; do
     echo "Checking: $file"
-    mdl "$file"
+    .venv/bin/pymarkdown scan "$file"
 done < <(
     find . \
         -path "./.git" -prune -o \

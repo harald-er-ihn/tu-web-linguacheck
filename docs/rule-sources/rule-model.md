@@ -76,14 +76,14 @@ konkret dokumentierte Fehlalarme vermeiden.
 
 Jeder Whitelist-Eintrag benötigt künftig mindestens:
 
-~~~yaml
+```yaml
 term: example-term
 profile: tu-de
 reason: false_positive_prevention
 source_ids:
   - tu-de-example-source
 status: approved
-~~~
+```
 
 Eine Whitelist darf keine Rechtschreib-, Grammatik- oder Stilprüfung pauschal
 unterdrücken.

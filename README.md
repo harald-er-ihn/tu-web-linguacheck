@@ -36,6 +36,7 @@ lokal mit `tools/generate_architecture_diagram.sh` erzeugt.
   Terminologie- und Stilregeln.
 - `tu-en`: Englische TU-Dortmund-Websites: LanguageTool mit `en-US`,
   TU-Terminologie und englische Stilregeln.
+
 ## Geplanter Technologiestack
 
 - Python 3.12
