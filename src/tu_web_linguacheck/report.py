@@ -4,9 +4,12 @@ from collections.abc import Sequence
 from html import escape
 from pathlib import Path
 
+from markdown_it import MarkdownIt
+
 from tu_web_linguacheck.models import Finding
 
 _CONTEXT_RADIUS = 80
+_MARKDOWN_RENDERER = MarkdownIt("commonmark", {"html": False})
 
 
 def _marked_context(finding: Finding) -> str:
@@ -96,6 +99,33 @@ def _document(
 """
 
 
+def _project_info_document(markdown: str) -> str:
+    """Erzeugt eine eigenständige, HTML-sichere Projektinformationsseite."""
+    content = _MARKDOWN_RENDERER.render(markdown)
+
+    return f"""\
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Über tu-web-linguacheck</title>
+  <style>
+    body {{ font-family: system-ui, sans-serif; margin: 2rem; color: #1f2933; }}
+    main {{ max-width: 70rem; }}
+    a {{ color: #005aa0; }}
+    img {{ height: auto; max-width: 100%; }}
+  </style>
+</head>
+<body>
+  <main>
+{content}
+  </main>
+</body>
+</html>
+"""
+
+
 def write_html_report(
     report_path: Path,
     *,
@@ -113,3 +143,9 @@ def write_html_report(
         ),
         encoding="utf-8",
     )
+
+
+def write_project_info_page(page_path: Path, *, markdown: str) -> None:
+    """Schreibt eine lokale Projektinformationsseite aus sicherem Markdown."""
+    page_path.parent.mkdir(parents=True, exist_ok=True)
+    page_path.write_text(_project_info_document(markdown), encoding="utf-8")
