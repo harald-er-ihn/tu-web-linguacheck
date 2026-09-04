@@ -443,3 +443,41 @@ def test_crawl_pages_with_content_forwards_error_callback(monkeypatch) -> None:
     assert candidate == expected_candidate
     assert isinstance(error, TimeoutError)
     assert str(error) == "Zeitüberschreitung"
+
+
+def test_crawl_html_pages_crawls_additional_start_urls_at_depth_zero() -> None:
+    """Zusätzliche Start-URLs werden als unabhängige Tiefe-null-Seiten gecrawlt."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=0,
+        max_pages=3,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+    )
+    fetched_urls: list[str] = []
+
+    def fetch_page(url: str) -> str:
+        fetched_urls.append(url)
+        return "<main></main>"
+
+    candidates = crawl_html_pages(
+        start_url="https://example.org/",
+        additional_start_urls=[
+            "https://example.org/aus-sitemap/",
+            "https://example.org/weitere-seite/",
+        ],
+        config=config,
+        fetch_page=fetch_page,
+        sleep=lambda _seconds: None,
+    )
+
+    assert candidates == [
+        CrawlCandidate(url="https://example.org/", depth=0),
+        CrawlCandidate(url="https://example.org/aus-sitemap/", depth=0),
+        CrawlCandidate(url="https://example.org/weitere-seite/", depth=0),
+    ]
+    assert fetched_urls == [
+        "https://example.org/",
+        "https://example.org/aus-sitemap/",
+        "https://example.org/weitere-seite/",
+    ]

@@ -19,6 +19,7 @@ class CrawlConfig(BaseModel):
     strip_fragments: bool = True
     tracking_parameters: list[str] = Field(default_factory=list)
     exclude_patterns: list[str] = Field(default_factory=list)
+    sitemap_urls: list[str] = Field(default_factory=list)
 
 
 class CheckConfig(BaseModel):

@@ -196,3 +196,19 @@ def test_check_config_accepts_ignored_terms() -> None:
         "TiMana",
         "Samtosha",
     ]
+
+
+def test_crawl_config_accepts_sitemap_urls() -> None:
+    """Die Crawl-Konfiguration akzeptiert optionale Sitemap-URLs."""
+    config = CrawlConfig(
+        allowed_domains=["qi-gong-fuer-alle.de"],
+        max_depth=3,
+        max_pages=30,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+        sitemap_urls=["https://qi-gong-fuer-alle.de/sitemap.xml"],
+    )
+
+    assert config.sitemap_urls == [
+        "https://qi-gong-fuer-alle.de/sitemap.xml",
+    ]

@@ -28,6 +28,15 @@ class CrawlQueue:
 
         return self._candidates.popleft()
 
+    def add_start_urls(self, urls: Sequence[str]) -> None:
+        """Fügt eindeutige zusätzliche Start-URLs mit Tiefe null ein."""
+        for url in urls:
+            if url in self._seen_urls:
+                continue
+
+            self._seen_urls.add(url)
+            self._candidates.append(CrawlCandidate(url=url, depth=0))
+
     def add_children(
         self,
         *,
@@ -58,6 +67,7 @@ def crawl_html_pages(
     *,
     start_url: str,
     config: CrawlConfig,
+    additional_start_urls: Sequence[str] = (),
     fetch_page: Callable[[str], str],
     sleep: Callable[[float], None],
     on_progress: Callable[[int, CrawlCandidate], None] | None = None,
@@ -73,6 +83,7 @@ def crawl_html_pages(
         start_url=prepared_start_url,
         max_depth=config.max_depth,
     )
+    queue.add_start_urls(additional_start_urls)
     processed_candidates: list[CrawlCandidate] = []
 
     while len(processed_candidates) < config.max_pages:
