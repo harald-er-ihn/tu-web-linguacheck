@@ -28,7 +28,16 @@ from tu_web_linguacheck.report import write_html_report
 from tu_web_linguacheck.urls import prepare_crawl_url
 
 app = typer.Typer(
-    help="Prüft öffentlich erreichbare Websites lokal auf sprachliche Auffälligkeiten.",
+    help=(
+        "Prüft öffentlich erreichbare Websites lokal auf sprachliche "
+        "Auffälligkeiten.\n\n"
+        "Schnellstart für eine einzelne Seite:\n"
+        "  tu-web-linguacheck check-url URL CONFIG_PATH --report DATEI.html\n\n"
+        "URL ist die Webadresse. CONFIG_PATH ist eine lokale "
+        "YAML-Konfigurationsdatei.\n"
+        "--report DATEI.html erstellt optional einen lokalen HTML-Bericht.\n\n"
+        "Weitere Argumente und Optionen: tu-web-linguacheck COMMAND --help"
+    ),
     no_args_is_help=True,
 )
 
@@ -212,6 +221,9 @@ def check_text(
 def check_url(
     url: str,
     config_path: Path,
+    report_path: Path | None = typer.Option(
+        None, "--report", help="Schreibt einen HTML-Bericht in die angegebene Datei."
+    ),
 ) -> None:
     """Prüft genau eine erlaubte HTML-Seite mit lokalem LanguageTool."""
     config = load_project_config(config_path)
@@ -253,6 +265,15 @@ def check_url(
 
     typer.echo(f"Prüfblöcke: {checked_blocks}")
     _display_findings(findings)
+
+    if report_path is not None:
+        write_html_report(
+            report_path,
+            crawled_pages=1,
+            checked_blocks=checked_blocks,
+            findings=findings,
+        )
+        typer.echo(f"HTML-Bericht: {report_path}")
 
 
 @app.command()
