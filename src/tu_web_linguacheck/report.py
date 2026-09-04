@@ -6,6 +6,25 @@ from pathlib import Path
 
 from tu_web_linguacheck.models import Finding
 
+_CONTEXT_RADIUS = 80
+
+
+def _marked_context(finding: Finding) -> str:
+    """Erzeugt einen gekürzten, sicher markierten Fundkontext."""
+    match_end = finding.offset + finding.length
+    context_start = max(0, finding.offset - _CONTEXT_RADIUS)
+    context_end = min(len(finding.context), match_end + _CONTEXT_RADIUS)
+
+    before = finding.context[context_start : finding.offset]
+    matched = finding.context[finding.offset : match_end]
+    after = finding.context[match_end:context_end]
+
+    prefix = "…" if context_start > 0 else ""
+    suffix = "…" if context_end < len(finding.context) else ""
+    return (
+        f"{prefix}{escape(before)}<mark>{escape(matched)}</mark>{escape(after)}{suffix}"
+    )
+
 
 def _finding_row(finding: Finding) -> str:
     """Erzeugt eine sicher escapte Tabellenzeile für einen Sprachfund."""
@@ -20,7 +39,7 @@ def _finding_row(finding: Finding) -> str:
   <td>{escape(finding.message)}</td>
   <td>{escape(finding.source_rule_id)}</td>
   <td>{escape(suggestions)}</td>
-  <td><pre>{escape(finding.context)}</pre></td>
+  <td><pre>{_marked_context(finding)}</pre></td>
 </tr>"""
 
 
@@ -47,6 +66,7 @@ def _document(
     th {{ background: #e2e8f0; }}
     tr:nth-child(even) {{ background: #f8fafc; }}
     a {{ color: #005aa0; }}
+    mark {{ background: #fef08a; padding: 0.1rem; }}
     pre {{ margin: 0; white-space: pre-wrap; font: inherit; }}
   </style>
 </head>

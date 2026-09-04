@@ -1,6 +1,6 @@
 """Hilfsfunktionen für lokale HTTP-Antworten."""
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from urllib import robotparser
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -19,8 +19,21 @@ def is_html_content_type(content_type: str) -> bool:
     return media_type == "text/html"
 
 
-def fetch_html(url: str, allowed_domains: Sequence[str]) -> str:
-    """Ruft eine erlaubte, per robots.txt erlaubte HTML-Seite lokal ab."""
+def is_xml_content_type(content_type: str) -> bool:
+    """Prüft, ob ein Content-Type eine XML-Antwort bezeichnet."""
+    media_type = content_type.split(";", maxsplit=1)[0].strip().casefold()
+
+    return media_type in {"application/xml", "text/xml"}
+
+
+def _fetch_document(
+    url: str,
+    allowed_domains: Sequence[str],
+    *,
+    document_name: str,
+    accepts_content_type: Callable[[str], bool],
+) -> str:
+    """Ruft ein erlaubtes, per robots.txt erlaubtes Dokument sicher ab."""
     if not is_allowed_url(url, allowed_domains):
         raise ValueError(f"URL ist nicht erlaubt: {url}")
 
@@ -44,18 +57,42 @@ def fetch_html(url: str, allowed_domains: Sequence[str]) -> str:
 
         content_type = response.headers.get("Content-Type", "")
 
-        if not is_html_content_type(content_type):
-            raise ValueError(f"Antwort ist kein HTML-Dokument: {content_type}")
+        if not accepts_content_type(content_type):
+            raise ValueError(
+                f"Antwort ist kein {document_name}-Dokument: {content_type}"
+            )
 
         content_length = response.headers.get("Content-Length")
 
         if content_length is not None and int(content_length) > _MAX_RESPONSE_BYTES:
-            raise ValueError("HTML-Antwort überschreitet die maximale Größe.")
+            raise ValueError(
+                f"{document_name}-Antwort überschreitet die maximale Größe."
+            )
 
-        html_bytes = response.read(_MAX_RESPONSE_BYTES + 1)
+        document_bytes = response.read(_MAX_RESPONSE_BYTES + 1)
         charset = response.headers.get_content_charset() or "utf-8"
 
-    if len(html_bytes) > _MAX_RESPONSE_BYTES:
-        raise ValueError("HTML-Antwort überschreitet die maximale Größe.")
+    if len(document_bytes) > _MAX_RESPONSE_BYTES:
+        raise ValueError(f"{document_name}-Antwort überschreitet die maximale Größe.")
 
-    return html_bytes.decode(charset, errors="replace")
+    return document_bytes.decode(charset, errors="replace")
+
+
+def fetch_html(url: str, allowed_domains: Sequence[str]) -> str:
+    """Ruft eine erlaubte, per robots.txt erlaubte HTML-Seite lokal ab."""
+    return _fetch_document(
+        url,
+        allowed_domains,
+        document_name="HTML",
+        accepts_content_type=is_html_content_type,
+    )
+
+
+def fetch_xml(url: str, allowed_domains: Sequence[str]) -> str:
+    """Ruft eine erlaubte, per robots.txt erlaubte XML-Sitemap lokal ab."""
+    return _fetch_document(
+        url,
+        allowed_domains,
+        document_name="XML",
+        accepts_content_type=is_xml_content_type,
+    )
