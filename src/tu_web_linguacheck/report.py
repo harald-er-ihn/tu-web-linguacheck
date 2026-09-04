@@ -78,6 +78,11 @@ def _document(
   <p>Gecrawlte Seiten: {crawled_pages}</p>
   <p>Prüfblöcke: {checked_blocks}</p>
   <p>Sprachfunde: {len(findings)}</p>
+  <h2>Über dieses Werkzeug</h2>
+  <p><strong>tu-web-linguacheck 0.1.0</strong></p>
+  <p>Lokale Sprachprüfung für öffentlich erreichbare Websites</p>
+  <p>Autor: Dr. Harald Hutter</p>
+  <p>Lizenz: MIT-Lizenz</p>
   <table>
     <thead>
       <tr>

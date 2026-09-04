@@ -96,3 +96,23 @@ Ein **lokales** Werkzeug.
     assert "<h2>Ziele</h2>" in html
     assert "<li>HTML-Seiten prüfen</li>" in html
     assert "<li>Keine &lt;Cloud-KI&gt; nutzen</li>" in html
+
+
+def test_write_html_report_includes_project_information(tmp_path) -> None:
+    """Der HTML-Bericht nennt die grundlegenden Projektinformationen."""
+    report_path = tmp_path / "crawl-report.html"
+
+    write_html_report(
+        report_path,
+        crawled_pages=0,
+        checked_blocks=0,
+        findings=[],
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert "<h2>Über dieses Werkzeug</h2>" in html
+    assert "tu-web-linguacheck 0.1.0" in html
+    assert "Lokale Sprachprüfung für öffentlich erreichbare Websites" in html
+    assert "Dr. Harald Hutter" in html
+    assert "MIT-Lizenz" in html
