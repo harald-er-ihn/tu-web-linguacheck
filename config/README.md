@@ -100,6 +100,18 @@ Direkte Seiten-URLs aus `<url><loc>` und untergeordnete Sitemaps aus
 `<sitemap><loc>` werden berücksichtigt. Verschachtelte Bild-URLs wie
 `<image:loc>` werden ignoriert.
 
+### HTML-Sitemaps als Start-URL
+
+Eine HTML-Sitemap kann nicht in `sitemap_urls` eingetragen werden. Sie kann
+aber direkt als Start-URL für `check-crawl` dienen:
+
+```bash
+tu-web-linguacheck check-crawl https://example.org/sitemap/ config/meine-seite.local.yaml
+```
+
+Der Crawl verarbeitet die HTML-Sitemap mit Tiefe `0` und folgt ihren erlaubten
+internen HTML-Links gemäß `max_depth` und `max_pages`.
+
 ## Bereich `check`
 
 | Feld | Bedeutung |
