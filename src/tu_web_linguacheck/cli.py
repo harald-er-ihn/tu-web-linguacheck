@@ -434,6 +434,10 @@ def check_crawl(
     findings: list[Finding] = []
     checked_blocks = 0
 
+    terminology_entries = None
+    if config.profile == "tu-en" and config.check.terminology_path is not None:
+        terminology_entries = load_terminology(config.check.terminology_path)
+
     try:
         for page in pages:
             if page.blocks:
@@ -453,6 +457,19 @@ def check_crawl(
                     profile=config.profile,
                     disabled_rule_ids=config.check.ignored_rule_ids,
                     ignored_terms=config.check.ignored_terms,
+                )
+            if terminology_entries is not None:
+                findings.extend(
+                    finding_from_terminology_match(
+                        match,
+                        url=page.url,
+                        context=page.text,
+                        profile=config.profile,
+                    )
+                    for match in find_terminology_matches(
+                        page.text,
+                        terminology_entries,
+                    )
                 )
             findings.extend(page_findings)
             checked_blocks += page_checked_blocks
