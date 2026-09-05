@@ -46,9 +46,10 @@ def find_terminology_matches(
 
     for entry in entries:
         for variant in entry.variants_to_flag:
-            offset = normalized_text.find(variant.casefold())
+            normalized_variant = variant.casefold()
+            offset = normalized_text.find(normalized_variant)
 
-            if offset >= 0:
+            while offset >= 0:
                 matches.append(
                     TerminologyMatch(
                         matched_text=text[offset : offset + len(variant)],
@@ -56,6 +57,10 @@ def find_terminology_matches(
                         length=len(variant),
                         preferred_english=entry.preferred_english,
                     )
+                )
+                offset = normalized_text.find(
+                    normalized_variant,
+                    offset + len(normalized_variant),
                 )
 
     return matches

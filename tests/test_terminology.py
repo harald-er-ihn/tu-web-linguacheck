@@ -55,3 +55,21 @@ def test_find_terminology_matches_finds_variants_case_insensitively() -> None:
     assert matches[0].length == 32
     assert matches[0].matched_text == "TECHNICAL UNIVERSITY OF DORTMUND"
     assert matches[0].preferred_english == "TU Dortmund University"
+
+
+def test_find_terminology_matches_finds_all_variant_occurrences() -> None:
+    """Die Suche findet jedes Vorkommen einer unerwünschten Variante."""
+    entries = (
+        TerminologyEntry(
+            preferred_english="TU Dortmund University",
+            variants_to_flag=("Technical University of Dortmund",),
+        ),
+    )
+
+    matches = find_terminology_matches(
+        "Technical University of Dortmund and Technical University of Dortmund",
+        entries,
+    )
+
+    assert len(matches) == 2
+    assert [match.offset for match in matches] == [0, 37]
