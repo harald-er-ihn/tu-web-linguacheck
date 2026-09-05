@@ -161,12 +161,14 @@ def test_crawl_site_delegates_to_secure_fetch_and_orchestrator(
         *,
         start_url: str,
         config: CrawlConfig,
+        additional_start_urls,
         fetch_page,
         sleep,
         on_progress=None,
     ) -> list[CrawlCandidate]:
         assert start_url == "https://example.org/"
         assert config.max_pages == 10
+        assert additional_start_urls == []
         assert on_progress is None
         assert fetch_page(start_url) == "<main></main>"
         assert sleep is fake_sleep
@@ -219,6 +221,7 @@ def test_crawl_pages_with_content_returns_extracted_crawl_results(
         *,
         start_url: str,
         config: CrawlConfig,
+        additional_start_urls,
         fetch_page,
         sleep,
         on_progress,
@@ -226,6 +229,7 @@ def test_crawl_pages_with_content_returns_extracted_crawl_results(
     ) -> list[CrawlCandidate]:
         assert start_url == "https://example.org/"
         assert config.max_pages == 1
+        assert additional_start_urls == []
         assert on_progress is None
         assert on_error is None
         assert fetch_page(start_url) == (
@@ -312,6 +316,7 @@ def test_crawl_pages_with_content_forwards_progress_callback(monkeypatch) -> Non
         *,
         start_url,
         config,
+        additional_start_urls,
         fetch_page,
         sleep,
         on_progress,
@@ -319,6 +324,7 @@ def test_crawl_pages_with_content_forwards_progress_callback(monkeypatch) -> Non
     ):
         assert start_url == "https://example.org/"
         assert config.max_pages == 1
+        assert additional_start_urls == []
         assert on_error is None
         assert fetch_page(start_url) == "<main>Ein Test.</main>"
         assert sleep is not None
@@ -408,6 +414,7 @@ def test_crawl_pages_with_content_forwards_error_callback(monkeypatch) -> None:
         *,
         start_url,
         config,
+        additional_start_urls,
         fetch_page,
         sleep,
         on_progress,
@@ -415,6 +422,7 @@ def test_crawl_pages_with_content_forwards_error_callback(monkeypatch) -> None:
     ):
         assert start_url == "https://example.org/"
         assert config.max_pages == 1
+        assert additional_start_urls == []
         assert fetch_page(start_url) == "<main>Ein Test.</main>"
         assert sleep is not None
         assert on_progress is None
@@ -480,4 +488,67 @@ def test_crawl_html_pages_crawls_additional_start_urls_at_depth_zero() -> None:
         "https://example.org/",
         "https://example.org/aus-sitemap/",
         "https://example.org/weitere-seite/",
+    ]
+
+
+def test_crawl_site_includes_pages_from_configured_sitemaps(
+    monkeypatch,
+) -> None:
+    """Sitemap-Seiten und Seiten aus Kind-Sitemaps werden gecrawlt."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=0,
+        max_pages=3,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+        sitemap_urls=["https://example.org/sitemap.xml"],
+    )
+    xml_by_url = {
+        "https://example.org/sitemap.xml": """
+        <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+          <sitemap><loc>https://example.org/child-sitemap.xml</loc></sitemap>
+          <url><loc>https://example.org/from-root/</loc></url>
+        </sitemapindex>
+        """,
+        "https://example.org/child-sitemap.xml": """
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+          <url><loc>https://example.org/from-child/</loc></url>
+        </urlset>
+        """,
+    }
+    fetched_html_urls: list[str] = []
+
+    def fake_fetch_xml(url: str, allowed_domains: list[str]) -> str:
+        assert allowed_domains == ["example.org"]
+        return xml_by_url[url]
+
+    def fake_fetch_html(url: str, allowed_domains: list[str]) -> str:
+        assert allowed_domains == ["example.org"]
+        fetched_html_urls.append(url)
+        return "<main></main>"
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.fetch_xml",
+        fake_fetch_xml,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.fetch_html",
+        fake_fetch_html,
+    )
+
+    candidates = crawl_site(
+        start_url="https://example.org/",
+        config=config,
+    )
+
+    assert candidates == [
+        CrawlCandidate(url="https://example.org/", depth=0),
+        CrawlCandidate(url="https://example.org/from-root/", depth=0),
+        CrawlCandidate(url="https://example.org/from-child/", depth=0),
+    ]
+    assert fetched_html_urls == [
+        "https://example.org/",
+        "https://example.org/from-root/",
+        "https://example.org/from-child/",
     ]

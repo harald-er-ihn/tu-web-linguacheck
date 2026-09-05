@@ -4,12 +4,14 @@ import time
 from collections import deque
 from collections.abc import Callable, Sequence
 from urllib.error import URLError
+from xml.etree import ElementTree
 
 from tu_web_linguacheck.config import CrawlConfig
 from tu_web_linguacheck.html_content import TextBlock, extract_page_content
-from tu_web_linguacheck.http import fetch_html
+from tu_web_linguacheck.http import fetch_html, fetch_xml
 from tu_web_linguacheck.models import CrawlCandidate, CrawledPage
 from tu_web_linguacheck.page_links import find_crawlable_page_links
+from tu_web_linguacheck.sitemap import parse_sitemap
 from tu_web_linguacheck.urls import prepare_crawl_url
 
 
@@ -60,6 +62,37 @@ class CrawlQueue:
                     depth=child_depth,
                 )
             )
+
+
+def _find_sitemap_page_urls(config: CrawlConfig) -> list[str]:
+    """Liest crawlbare Seiten-URLs aus konfigurierten XML-Sitemaps."""
+    pending_sitemaps = deque(config.sitemap_urls)
+    seen_sitemaps: set[str] = set()
+    page_urls: list[str] = []
+
+    while pending_sitemaps:
+        sitemap_url = pending_sitemaps.popleft()
+
+        if sitemap_url in seen_sitemaps:
+            continue
+
+        seen_sitemaps.add(sitemap_url)
+
+        try:
+            xml = fetch_xml(sitemap_url, config.allowed_domains)
+            sitemap_page_urls, child_sitemaps = parse_sitemap(xml)
+        except (ElementTree.ParseError, TimeoutError, URLError, ValueError):
+            continue
+
+        for url in sitemap_page_urls:
+            prepared_url = prepare_crawl_url(url, config)
+
+            if prepared_url is not None:
+                page_urls.append(prepared_url)
+
+        pending_sitemaps.extend(child_sitemaps)
+
+    return page_urls
 
 
 # pylint: disable=too-many-arguments
@@ -126,6 +159,7 @@ def crawl_site(
     return crawl_html_pages(
         start_url=start_url,
         config=config,
+        additional_start_urls=_find_sitemap_page_urls(config),
         fetch_page=lambda url: fetch_html(url, config.allowed_domains),
         sleep=time.sleep,
     )
@@ -154,6 +188,7 @@ def crawl_pages_with_content(
     candidates = crawl_html_pages(
         start_url=start_url,
         config=config,
+        additional_start_urls=_find_sitemap_page_urls(config),
         fetch_page=fetch_page,
         sleep=time.sleep,
         on_progress=on_progress,
