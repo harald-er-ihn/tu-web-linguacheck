@@ -2,6 +2,7 @@
 
 from tu_web_linguacheck.languagetool import LanguageToolMatch
 from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.terminology import TerminologyMatch
 
 
 def finding_from_languagetool_match(
@@ -40,3 +41,27 @@ def filter_ignored_terms(
         if finding.context[finding.offset : finding.offset + finding.length].casefold()
         not in normalized_ignored_terms
     ]
+
+
+def finding_from_terminology_match(
+    match: TerminologyMatch,
+    *,
+    url: str,
+    context: str,
+    profile: str,
+) -> Finding:
+    """Überführt einen Terminologietreffer in das interne Ergebnisformat."""
+    preferred_english = match.preferred_english
+
+    return Finding(
+        url=url,
+        category="terminology",
+        severity="hint",
+        message=f"Nicht bevorzugte TU-Terminologie. Bevorzugt: {preferred_english}.",
+        offset=match.offset,
+        length=match.length,
+        suggestions=(preferred_english,),
+        context=context,
+        profile=profile,
+        source_rule_id="TU_EN_TERMINOLOGY",
+    )

@@ -4,9 +4,11 @@
 from tu_web_linguacheck.findings import (
     filter_ignored_terms,
     finding_from_languagetool_match,
+    finding_from_terminology_match,
 )
 from tu_web_linguacheck.languagetool import LanguageToolMatch
 from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.terminology import TerminologyMatch
 
 
 def test_creates_finding_from_languagetool_match() -> None:
@@ -111,3 +113,36 @@ def test_filters_findings_with_configured_ignored_terms() -> None:
 
     assert len(filtered_findings) == 1
     assert filtered_findings[0].context == "TiManaX ist kein ignorierter Begriff."
+
+
+def test_creates_finding_from_terminology_match() -> None:
+    """Ein Terminologietreffer wird in das interne Ergebnisformat überführt."""
+
+    match = TerminologyMatch(
+        matched_text="Technical University of Dortmund",
+        offset=4,
+        length=32,
+        preferred_english="TU Dortmund University",
+    )
+
+    finding = finding_from_terminology_match(
+        match,
+        url="https://example.org/about/",
+        context="The Technical University of Dortmund is located in Germany.",
+        profile="tu-en",
+    )
+
+    assert finding.url == "https://example.org/about/"
+    assert finding.category == "terminology"
+    assert finding.severity == "hint"
+    assert finding.message == (
+        "Nicht bevorzugte TU-Terminologie. Bevorzugt: TU Dortmund University."
+    )
+    assert finding.offset == 4
+    assert finding.length == 32
+    assert finding.suggestions == ("TU Dortmund University",)
+    assert (
+        finding.context == "The Technical University of Dortmund is located in Germany."
+    )
+    assert finding.profile == "tu-en"
+    assert finding.source_rule_id == "TU_EN_TERMINOLOGY"
