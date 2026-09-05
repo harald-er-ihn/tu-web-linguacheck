@@ -24,3 +24,38 @@ def load_terminology(path: Path) -> tuple[TerminologyEntry, ...]:
         )
         for entry in payload["entries"]
     )
+
+
+@dataclass(frozen=True)
+class TerminologyMatch:
+    """Eine im Text gefundene unerwünschte Terminologievariante."""
+
+    matched_text: str
+    offset: int
+    length: int
+    preferred_english: str
+
+
+def find_terminology_matches(
+    text: str,
+    entries: tuple[TerminologyEntry, ...],
+) -> list[TerminologyMatch]:
+    """Findet unerwünschte Terminologievarianten unabhängig von Großschreibung."""
+    matches: list[TerminologyMatch] = []
+    normalized_text = text.casefold()
+
+    for entry in entries:
+        for variant in entry.variants_to_flag:
+            offset = normalized_text.find(variant.casefold())
+
+            if offset >= 0:
+                matches.append(
+                    TerminologyMatch(
+                        matched_text=text[offset : offset + len(variant)],
+                        offset=offset,
+                        length=len(variant),
+                        preferred_english=entry.preferred_english,
+                    )
+                )
+
+    return matches
