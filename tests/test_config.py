@@ -1,5 +1,7 @@
 """Tests für die Projektkonfiguration."""
 
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -212,3 +214,25 @@ def test_crawl_config_accepts_sitemap_urls() -> None:
     assert config.sitemap_urls == [
         "https://qi-gong-fuer-alle.de/sitemap.xml",
     ]
+
+
+def test_check_config_accepts_optional_terminology_path() -> None:
+    """Die Prüfkonfiguration akzeptiert einen lokalen Terminologiepfad."""
+    config = ProjectConfig.model_validate(
+        {
+            "profile": "tu-en",
+            "crawl": {
+                "allowed_domains": ["example.org"],
+                "max_depth": 1,
+                "max_pages": 10,
+                "requests_per_second": 1.0,
+                "obey_robots_txt": True,
+            },
+            "check": {
+                "language": "en-US",
+                "terminology_path": "data/tu-terminology.local.json",
+            },
+        }
+    )
+
+    assert config.check.terminology_path == Path("data/tu-terminology.local.json")

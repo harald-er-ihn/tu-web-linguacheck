@@ -12,6 +12,7 @@ from tu_web_linguacheck.crawler import crawl_pages_with_content
 from tu_web_linguacheck.findings import (
     filter_ignored_terms,
     finding_from_languagetool_match,
+    finding_from_terminology_match,
 )
 from tu_web_linguacheck.html_content import TextBlock, extract_page_content
 from tu_web_linguacheck.http import fetch_html
@@ -25,6 +26,7 @@ from tu_web_linguacheck.languagetool import (
 )
 from tu_web_linguacheck.models import Finding
 from tu_web_linguacheck.report import write_html_report
+from tu_web_linguacheck.terminology import find_terminology_matches, load_terminology
 from tu_web_linguacheck.urls import prepare_crawl_url
 
 app = typer.Typer(
@@ -262,6 +264,21 @@ def check_url(
     except LanguageToolUnavailableError as error:
         typer.echo(str(error))
         raise typer.Exit(code=1) from error
+
+    if config.profile == "tu-en" and config.check.terminology_path is not None:
+        terminology_entries = load_terminology(config.check.terminology_path)
+        findings.extend(
+            finding_from_terminology_match(
+                match,
+                url=prepared_url,
+                context=page_content.text,
+                profile=config.profile,
+            )
+            for match in find_terminology_matches(
+                page_content.text,
+                terminology_entries,
+            )
+        )
 
     typer.echo(f"Prüfblöcke: {checked_blocks}")
     _display_findings(findings)
