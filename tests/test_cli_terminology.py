@@ -159,3 +159,79 @@ def test_check_crawl_reports_local_tu_terminology(monkeypatch, tmp_path) -> None
     assert "URL: https://example.org/about/" in result.output
     assert "Fundstelle: Technical University of Dortmund" in result.output
     assert "Vorschläge: TU Dortmund University" in result.output
+
+
+def test_check_url_reports_local_german_inclusive_language(
+    monkeypatch, tmp_path
+) -> None:
+    """Der Check-URL-Befehl meldet lokale inklusive deutsche Terminologie."""
+    config_path = tmp_path / "config.yaml"
+    terminology_path = tmp_path / "tu-de-terminology.local.json"
+    terminology_path.write_text(
+        """\
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "preferred_term": "Lehrkräfte",
+      "variants_to_flag": ["Lehrer"]
+    }
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=1,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+        check={
+            "language": "de-DE",
+            "terminology_path": terminology_path,
+        },
+    )
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda path: config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.prepare_crawl_url",
+        lambda url, crawl_config: url,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        lambda url, allowed_domains: "<html></html>",
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.extract_page_content",
+        lambda html: PageContent(
+            title="Studium",
+            text="Die Lehrer beraten Studierende.",
+        ),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        lambda _self, *, text, language: [],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-url",
+            "https://example.org/studium/",
+            str(config_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Sprachfunde: 1" in result.output
+    assert "Kategorie: terminology" in result.output
+    assert "Regel: TU_DE_INCLUSIVE_LANGUAGE" in result.output
+    assert "Fundstelle: Lehrer" in result.output
+    assert "Vorschläge: Lehrkräfte" in result.output

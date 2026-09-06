@@ -265,7 +265,7 @@ def check_url(
         typer.echo(str(error))
         raise typer.Exit(code=1) from error
 
-    if config.profile == "tu-en" and config.check.terminology_path is not None:
+    if config.check.terminology_path is not None:
         terminology_entries = load_terminology(config.check.terminology_path)
         findings.extend(
             finding_from_terminology_match(
