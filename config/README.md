@@ -7,6 +7,8 @@ Dieses Verzeichnis enthält YAML-Konfigurationen für `tu-web-linguacheck`.
   Konfigurationen vorgesehen und werden von Git ignoriert.
 - Lokale Konfigurationen dürfen domainspezifische Einstellungen und
   projektspezifische Ausnahmen enthalten.
+- Für TU-weite lokale Prüfungen sind `tu-de.local.yaml` und
+  `tu-en.local.yaml` als profilbezogene Namen empfohlen.
 
 Eine Konfiguration wird vor der Nutzung validiert:
 
@@ -119,6 +121,7 @@ internen HTML-Links gemäß `max_depth` und `max_pages`.
 | `language` | LanguageTool-Sprache, etwa `de-DE` oder `en-US`. |
 | `ignored_rule_ids` | Regel-IDs, deren Funde nicht berichtet werden. |
 | `ignored_terms` | Begriffe, die nicht als Rechtschreibfund berichtet werden. |
+| `terminology_path` | Optionaler Pfad zur lokalen TU-Terminologie für `tu-en`. |
 
 Mit `ignored_rule_ids` lassen sich bekannte, für das Projekt nicht relevante
 Regeln ausblenden:
@@ -136,4 +139,15 @@ check:
   ignored_terms:
     - TiMana
     - Samtosha
+```
+
+### Lokale TU-Terminologie
+
+Das Profil `tu-en` kann zusätzlich eine lokale Terminologiedatei verwenden.
+Sie bleibt außerhalb des öffentlichen Repositorys und wird nur für
+Terminologievarianten geprüft.
+
+```yaml
+check:
+  terminology_path: /absoluter/pfad/zu/tu-terminology.local.json
 ```
