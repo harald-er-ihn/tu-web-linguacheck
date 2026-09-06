@@ -122,7 +122,7 @@ def test_creates_finding_from_terminology_match() -> None:
         matched_text="Technical University of Dortmund",
         offset=4,
         length=32,
-        preferred_english="TU Dortmund University",
+        preferred_term="TU Dortmund University",
     )
 
     finding = finding_from_terminology_match(
@@ -146,3 +146,27 @@ def test_creates_finding_from_terminology_match() -> None:
     )
     assert finding.profile == "tu-en"
     assert finding.source_rule_id == "TU_EN_TERMINOLOGY"
+
+
+def test_creates_german_inclusive_language_finding_from_terminology_match() -> None:
+    """Ein deutscher Terminologietreffer erhält die inklusive Regel-ID."""
+
+    match = TerminologyMatch(
+        matched_text="Lehrer",
+        offset=4,
+        length=6,
+        preferred_term="Lehrkräfte",
+    )
+
+    finding = finding_from_terminology_match(
+        match,
+        url="https://example.org/studium/",
+        context="Die Lehrer beraten Studierende.",
+        profile="tu-de",
+    )
+
+    assert finding.message == (
+        "Nicht bevorzugte TU-Terminologie. Bevorzugt: Lehrkräfte."
+    )
+    assert finding.suggestions == ("Lehrkräfte",)
+    assert finding.source_rule_id == "TU_DE_INCLUSIVE_LANGUAGE"

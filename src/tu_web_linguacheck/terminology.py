@@ -38,7 +38,7 @@ class TerminologyMatch:
     matched_text: str
     offset: int
     length: int
-    preferred_english: str
+    preferred_term: str
 
 
 def find_terminology_matches(
@@ -60,7 +60,7 @@ def find_terminology_matches(
                         matched_text=text[offset : offset + len(variant)],
                         offset=offset,
                         length=len(variant),
-                        preferred_english=entry.preferred_english,
+                        preferred_term=entry.preferred_english,
                     )
                 )
                 offset = normalized_text.find(

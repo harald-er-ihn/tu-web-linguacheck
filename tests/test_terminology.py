@@ -54,7 +54,7 @@ def test_find_terminology_matches_finds_variants_case_insensitively() -> None:
     assert matches[0].offset == 4
     assert matches[0].length == 32
     assert matches[0].matched_text == "TECHNICAL UNIVERSITY OF DORTMUND"
-    assert matches[0].preferred_english == "TU Dortmund University"
+    assert matches[0].preferred_term == "TU Dortmund University"
 
 
 def test_find_terminology_matches_finds_all_variant_occurrences() -> None:

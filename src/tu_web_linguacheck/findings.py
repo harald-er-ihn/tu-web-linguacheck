@@ -51,17 +51,19 @@ def finding_from_terminology_match(
     profile: str,
 ) -> Finding:
     """Überführt einen Terminologietreffer in das interne Ergebnisformat."""
-    preferred_english = match.preferred_english
+    preferred_term = match.preferred_term
 
     return Finding(
         url=url,
         category="terminology",
         severity="hint",
-        message=f"Nicht bevorzugte TU-Terminologie. Bevorzugt: {preferred_english}.",
+        message=f"Nicht bevorzugte TU-Terminologie. Bevorzugt: {preferred_term}.",
         offset=match.offset,
         length=match.length,
-        suggestions=(preferred_english,),
+        suggestions=(preferred_term,),
         context=context,
         profile=profile,
-        source_rule_id="TU_EN_TERMINOLOGY",
+        source_rule_id="TU_DE_INCLUSIVE_LANGUAGE"
+        if profile == "tu-de"
+        else "TU_EN_TERMINOLOGY",
     )
