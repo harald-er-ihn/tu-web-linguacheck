@@ -435,7 +435,7 @@ def check_crawl(
     checked_blocks = 0
 
     terminology_entries = None
-    if config.profile == "tu-en" and config.check.terminology_path is not None:
+    if config.check.terminology_path is not None:
         terminology_entries = load_terminology(config.check.terminology_path)
 
     try:

@@ -235,3 +235,81 @@ def test_check_url_reports_local_german_inclusive_language(
     assert "Regel: TU_DE_INCLUSIVE_LANGUAGE" in result.output
     assert "Fundstelle: Lehrer" in result.output
     assert "Vorschläge: Lehrkräfte" in result.output
+
+
+def test_check_crawl_reports_local_german_inclusive_language(
+    monkeypatch, tmp_path
+) -> None:
+    """Der Crawl-Check meldet lokale inklusive deutsche Terminologie."""
+    config_path = tmp_path / "config.yaml"
+    terminology_path = tmp_path / "tu-de-terminology.local.json"
+    terminology_path.write_text(
+        """\
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "preferred_term": "Lehrkräfte",
+      "variants_to_flag": ["Lehrer"]
+    }
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=1,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+        check={
+            "language": "de-DE",
+            "terminology_path": terminology_path,
+        },
+    )
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda path: config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.crawl_pages_with_content",
+        lambda **_kwargs: [
+            type(
+                "Page",
+                (),
+                {
+                    "url": "https://example.org/studium/",
+                    "depth": 0,
+                    "title": "Studium",
+                    "text": "Die Lehrer beraten Studierende.",
+                    "blocks": (),
+                },
+            )()
+        ],
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        lambda _self, *, text, language: [],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-crawl",
+            "https://example.org/",
+            str(config_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Sprachfunde: 1" in result.output
+    assert "Kategorie: terminology" in result.output
+    assert "Regel: TU_DE_INCLUSIVE_LANGUAGE" in result.output
+    assert "URL: https://example.org/studium/" in result.output
+    assert "Fundstelle: Lehrer" in result.output
+    assert "Vorschläge: Lehrkräfte" in result.output
