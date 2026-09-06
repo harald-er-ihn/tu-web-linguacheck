@@ -73,3 +73,30 @@ def test_find_terminology_matches_finds_all_variant_occurrences() -> None:
 
     assert len(matches) == 2
     assert [match.offset for match in matches] == [0, 37]
+
+
+def test_load_terminology_loads_language_neutral_preferred_terms(
+    tmp_path: Path,
+) -> None:
+    """Die lokale JSON-Datei akzeptiert sprachneutrale bevorzugte Begriffe."""
+    terminology_path = tmp_path / "tu-inclusive-language.local.json"
+    terminology_path.write_text(
+        """\
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "preferred_term": "Lehrkräfte",
+      "variants_to_flag": ["Lehrer"]
+    }
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+
+    entries = load_terminology(terminology_path)
+
+    assert len(entries) == 1
+    assert entries[0].preferred_term == "Lehrkräfte"
+    assert entries[0].variants_to_flag == ("Lehrer",)

@@ -12,6 +12,11 @@ class TerminologyEntry:
     preferred_english: str
     variants_to_flag: tuple[str, ...]
 
+    @property
+    def preferred_term(self) -> str:
+        """Liefert die sprachneutral bevorzugte Terminologieform."""
+        return self.preferred_english
+
 
 def load_terminology(path: Path) -> tuple[TerminologyEntry, ...]:
     """Lädt bevorzugte Begriffe und zu prüfende Varianten aus einer JSON-Datei."""
@@ -19,7 +24,7 @@ def load_terminology(path: Path) -> tuple[TerminologyEntry, ...]:
 
     return tuple(
         TerminologyEntry(
-            preferred_english=entry["preferred_english"],
+            preferred_english=entry.get("preferred_term") or entry["preferred_english"],
             variants_to_flag=tuple(entry["variants_to_flag"]),
         )
         for entry in payload["entries"]
