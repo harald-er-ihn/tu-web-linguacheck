@@ -2,7 +2,8 @@
 set -euo pipefail
 
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-BACKUP_ROOT="${BACKUP_ROOT:-/media/harald/CloudSpace/Sciebo/tu-web-linguacheck-backup}"
+#BACKUP_ROOT="${BACKUP_ROOT:-/media/harald/CloudSpace/Sciebo/tu-web-linguacheck-backup}"
+BACKUP_ROOT="${BACKUP_ROOT:-/mnt/c/Users/mharhutt/sciebo/tu-web-linguacheck-backup/}"
 BACKUP_TIMESTAMP="${BACKUP_TIMESTAMP:-$(date +%Y-%m-%d_%H%M%S)}"
 BACKUP_NAME="tu-web-linguacheck-$BACKUP_TIMESTAMP"
 BACKUP_DIRECTORY="$BACKUP_ROOT/$BACKUP_NAME"
