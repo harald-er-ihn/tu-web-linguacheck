@@ -121,7 +121,7 @@ internen HTML-Links gemäß `max_depth` und `max_pages`.
 | `language` | LanguageTool-Sprache, etwa `de-DE` oder `en-US`. |
 | `ignored_rule_ids` | Regel-IDs, deren Funde nicht berichtet werden. |
 | `ignored_terms` | Begriffe, die nicht als Rechtschreibfund berichtet werden. |
-| `terminology_path` | Optionaler Pfad zur lokalen TU-Terminologie für `tu-en`. |
+| `terminology_path` | Optionaler lokaler Terminologiepfad für TU-Profile. |
 
 Mit `ignored_rule_ids` lassen sich bekannte, für das Projekt nicht relevante
 Regeln ausblenden:
@@ -143,11 +143,13 @@ check:
 
 ### Lokale TU-Terminologie
 
-Das Profil `tu-en` kann zusätzlich eine lokale Terminologiedatei verwenden.
-Sie bleibt außerhalb des öffentlichen Repositorys und wird nur für
-Terminologievarianten geprüft.
+Die Profile `tu-de` und `tu-en` können zusätzlich eine lokale
+Terminologiedatei verwenden. Sie bleibt außerhalb des öffentlichen
+Repositorys und wird nur für Terminologievarianten geprüft. Relative Pfade
+werden gegen das Verzeichnis der Konfigurationsdatei aufgelöst; das ist für
+Linux und WSL portabel.
 
 ```yaml
 check:
-  terminology_path: /absoluter/pfad/zu/tu-terminology.local.json
+  terminology_path: ../data/tu-terminology.local.json
 ```
