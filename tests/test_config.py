@@ -236,3 +236,30 @@ def test_check_config_accepts_optional_terminology_path() -> None:
     )
 
     assert config.check.terminology_path == Path("data/tu-terminology.local.json")
+
+
+def test_load_project_config_resolves_relative_terminology_path(
+    tmp_path: Path,
+) -> None:
+    """Ein relativer Terminologiepfad wird zum YAML-Verzeichnis aufgelöst."""
+    config_directory = tmp_path / "config"
+    config_directory.mkdir()
+    config_path = config_directory / "config.yaml"
+    config_path.write_text(
+        """\
+profile: tu-en
+crawl:
+  allowed_domains: [example.org]
+  max_depth: 1
+  max_pages: 10
+  requests_per_second: 1.0
+  obey_robots_txt: true
+check:
+  terminology_path: ../data/terminology.json
+""",
+        encoding="utf-8",
+    )
+
+    config = load_project_config(config_path)
+
+    assert config.check.terminology_path == tmp_path / "data/terminology.json"

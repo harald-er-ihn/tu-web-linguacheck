@@ -47,4 +47,9 @@ def load_project_config(path: Path) -> ProjectConfig:
     """Lädt und validiert eine lokale YAML-Projektkonfiguration."""
     config_data = yaml.safe_load(path.read_text(encoding="utf-8"))
 
-    return ProjectConfig.model_validate(config_data)
+    config = ProjectConfig.model_validate(config_data)
+    terminology_path = config.check.terminology_path
+    if terminology_path is not None and not terminology_path.is_absolute():
+        config.check.terminology_path = (path.parent / terminology_path).resolve()
+
+    return config
