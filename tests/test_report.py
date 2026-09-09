@@ -116,3 +116,19 @@ def test_write_html_report_includes_project_information(tmp_path) -> None:
     assert "Lokale Sprachprüfung für öffentlich erreichbare Websites" in html
     assert "Dr. Harald Hutter" in html
     assert "MIT-Lizenz" in html
+
+
+def test_write_html_report_shows_empty_state_without_findings(tmp_path) -> None:
+    """Der HTML-Bericht zeigt ohne Funde einen klaren Leerzustand."""
+    report_path = tmp_path / "crawl-report.html"
+
+    write_html_report(
+        report_path,
+        crawled_pages=1,
+        checked_blocks=3,
+        findings=[],
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert '<p class="empty-state">Keine Sprachfunde festgestellt.</p>' in html

@@ -54,6 +54,10 @@ def _document(
 ) -> str:
     """Erzeugt das vollständige HTML-Dokument für den Sprachprüfbericht."""
     rows = "\n".join(_finding_row(finding) for finding in findings)
+    table_hidden = " hidden" if not findings else ""
+    empty_state = (
+        "" if findings else '<p class="empty-state">Keine Sprachfunde festgestellt.</p>'
+    )
 
     return f"""\
 <!doctype html>
@@ -70,6 +74,7 @@ def _document(
     tr:nth-child(even) {{ background: #f8fafc; }}
     a {{ color: #005aa0; }}
     mark {{ background: #fef08a; padding: 0.1rem; }}
+    .empty-state {{ background: #ecfdf5; border: 1px solid #86efac; padding: 1rem; }}
     pre {{ margin: 0; white-space: pre-wrap; font: inherit; }}
   </style>
 </head>
@@ -78,12 +83,13 @@ def _document(
   <p>Gecrawlte Seiten: {crawled_pages}</p>
   <p>Prüfblöcke: {checked_blocks}</p>
   <p>Sprachfunde: {len(findings)}</p>
+  {empty_state}
   <h2>Über dieses Werkzeug</h2>
   <p><strong>tu-web-linguacheck 0.1.0</strong></p>
   <p>Lokale Sprachprüfung für öffentlich erreichbare Websites</p>
   <p>Autor: Dr. Harald Hutter</p>
   <p>Lizenz: MIT-Lizenz</p>
-  <table>
+  <table{table_hidden}>
     <thead>
       <tr>
         <th>URL</th>
