@@ -8,6 +8,7 @@ from tu_web_linguacheck.cli import app
 from tu_web_linguacheck.config import CrawlConfig, ProjectConfig
 from tu_web_linguacheck.html_content import PageContent
 from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.report import ReportContext
 
 runner = CliRunner()
 
@@ -41,7 +42,7 @@ def test_check_url_writes_html_report(monkeypatch, tmp_path) -> None:
             obey_robots_txt=True,
         ),
     )
-    written_reports: list[tuple[Path, int, int, list[Finding]]] = []
+    written_reports: list[tuple[Path, int, int, list[Finding], ReportContext]] = []
 
     monkeypatch.setattr(
         "tu_web_linguacheck.cli.load_project_config",
@@ -63,11 +64,20 @@ def test_check_url_writes_html_report(monkeypatch, tmp_path) -> None:
         "tu_web_linguacheck.cli.LanguageToolClient.check",
         lambda _self, **_kwargs: [],
     )
+
+    def fake_write_html_report(
+        path: Path,
+        *,
+        crawled_pages: int,
+        checked_blocks: int,
+        findings: list[Finding],
+        context: ReportContext,
+    ) -> None:
+        written_reports.append((path, crawled_pages, checked_blocks, findings, context))
+
     monkeypatch.setattr(
         "tu_web_linguacheck.cli.write_html_report",
-        lambda path, *, crawled_pages, checked_blocks, findings: written_reports.append(
-            (path, crawled_pages, checked_blocks, findings)
-        ),
+        fake_write_html_report,
     )
 
     result = runner.invoke(
@@ -82,5 +92,13 @@ def test_check_url_writes_html_report(monkeypatch, tmp_path) -> None:
     )
 
     assert result.exit_code == 0
-    assert written_reports == [(report_path, 1, 1, [])]
+    assert written_reports == [
+        (
+            report_path,
+            1,
+            1,
+            [],
+            ReportContext("https://example.org/", "generic-de", "de-DE"),
+        )
+    ]
     assert f"HTML-Bericht: {report_path}" in result.output

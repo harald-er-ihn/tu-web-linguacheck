@@ -14,6 +14,7 @@ from tu_web_linguacheck.languagetool import (
     LanguageToolUnavailableError,
 )
 from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.report import ReportContext
 
 runner = CliRunner()
 
@@ -929,7 +930,7 @@ def test_check_crawl_writes_html_report(monkeypatch, tmp_path) -> None:
             obey_robots_txt=True,
         ),
     )
-    written_reports: list[tuple[Path, int, int, list[Finding]]] = []
+    written_reports: list[tuple[Path, int, int, list[Finding], ReportContext]] = []
 
     def fake_load_project_config(path):
         assert path == config_path
@@ -952,8 +953,9 @@ def test_check_crawl_writes_html_report(monkeypatch, tmp_path) -> None:
         crawled_pages: int,
         checked_blocks: int,
         findings: list[Finding],
+        context: ReportContext,
     ) -> None:
-        written_reports.append((path, crawled_pages, checked_blocks, findings))
+        written_reports.append((path, crawled_pages, checked_blocks, findings, context))
 
     monkeypatch.setattr(
         "tu_web_linguacheck.cli.load_project_config",
@@ -984,5 +986,13 @@ def test_check_crawl_writes_html_report(monkeypatch, tmp_path) -> None:
     )
 
     assert result.exit_code == 0
-    assert written_reports == [(report_path, 0, 0, [])]
+    assert written_reports == [
+        (
+            report_path,
+            0,
+            0,
+            [],
+            ReportContext("https://example.org/", "generic-de", "de-DE"),
+        )
+    ]
     assert f"HTML-Bericht: {report_path}" in result.output

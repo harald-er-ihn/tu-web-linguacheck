@@ -1,7 +1,11 @@
 """Tests für lokale HTML-Berichte."""
 
 from tu_web_linguacheck.models import Finding
-from tu_web_linguacheck.report import write_html_report, write_project_info_page
+from tu_web_linguacheck.report import (
+    ReportContext,
+    write_html_report,
+    write_project_info_page,
+)
 
 
 def test_write_html_report_creates_clickable_escaped_findings(tmp_path) -> None:
@@ -25,6 +29,11 @@ def test_write_html_report_creates_clickable_escaped_findings(tmp_path) -> None:
         crawled_pages=2,
         checked_blocks=5,
         findings=[finding],
+        context=ReportContext(
+            start_url="https://example.org/seite/",
+            profile="generic-de",
+            language="de-DE",
+        ),
     )
 
     html = report_path.read_text(encoding="utf-8")
@@ -63,6 +72,11 @@ def test_write_html_report_limits_and_marks_context(tmp_path) -> None:
         crawled_pages=1,
         checked_blocks=1,
         findings=[finding],
+        context=ReportContext(
+            start_url="https://example.org/",
+            profile="generic-de",
+            language="de-DE",
+        ),
     )
 
     html = report_path.read_text(encoding="utf-8")
@@ -107,6 +121,11 @@ def test_write_html_report_includes_project_information(tmp_path) -> None:
         crawled_pages=0,
         checked_blocks=0,
         findings=[],
+        context=ReportContext(
+            start_url="https://example.org/",
+            profile="generic-de",
+            language="de-DE",
+        ),
     )
 
     html = report_path.read_text(encoding="utf-8")
@@ -127,8 +146,38 @@ def test_write_html_report_shows_empty_state_without_findings(tmp_path) -> None:
         crawled_pages=1,
         checked_blocks=3,
         findings=[],
+        context=ReportContext(
+            start_url="https://example.org/",
+            profile="generic-de",
+            language="de-DE",
+        ),
     )
 
     html = report_path.read_text(encoding="utf-8")
 
     assert '<p class="empty-state">Keine Sprachfunde festgestellt.</p>' in html
+
+
+def test_write_html_report_shows_escaped_check_context(tmp_path) -> None:
+    """Der HTML-Bericht zeigt einen sicher escapten Prüfkontext."""
+    report_path = tmp_path / "crawl-report.html"
+
+    write_html_report(
+        report_path,
+        crawled_pages=1,
+        checked_blocks=3,
+        findings=[],
+        context=ReportContext(
+            start_url="https://example.org/start?source=<report>",
+            profile="tu-de",
+            language="de-DE",
+        ),
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert '<section class="check-context">' in html
+    assert "<h2>Prüfkontext</h2>" in html
+    assert "Start-URL: https://example.org/start?source=&lt;report&gt;" in html
+    assert "Profil: tu-de" in html
+    assert "Sprache: de-DE" in html

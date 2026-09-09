@@ -1,6 +1,7 @@
 """Erzeugung lokaler HTML-Berichte für Sprachprüfungen."""
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from html import escape
 from pathlib import Path
 
@@ -10,6 +11,15 @@ from tu_web_linguacheck.models import Finding
 
 _CONTEXT_RADIUS = 80
 _MARKDOWN_RENDERER = MarkdownIt("commonmark", {"html": False})
+
+
+@dataclass(frozen=True)
+class ReportContext:
+    """Beschreibt den Kontext eines Sprachprüfberichts."""
+
+    start_url: str
+    profile: str
+    language: str
 
 
 def _marked_context(finding: Finding) -> str:
@@ -51,6 +61,7 @@ def _document(
     crawled_pages: int,
     checked_blocks: int,
     findings: Sequence[Finding],
+    context: ReportContext,
 ) -> str:
     """Erzeugt das vollständige HTML-Dokument für den Sprachprüfbericht."""
     rows = "\n".join(_finding_row(finding) for finding in findings)
@@ -58,6 +69,9 @@ def _document(
     empty_state = (
         "" if findings else '<p class="empty-state">Keine Sprachfunde festgestellt.</p>'
     )
+    escaped_start_url = escape(context.start_url)
+    escaped_profile = escape(context.profile)
+    escaped_language = escape(context.language)
 
     return f"""\
 <!doctype html>
@@ -75,6 +89,7 @@ def _document(
     a {{ color: #005aa0; }}
     mark {{ background: #fef08a; padding: 0.1rem; }}
     .empty-state {{ background: #ecfdf5; border: 1px solid #86efac; padding: 1rem; }}
+    .check-context {{ background: #eff6ff; border: 1px solid #93c5fd; padding: 1rem; }}
     pre {{ margin: 0; white-space: pre-wrap; font: inherit; }}
   </style>
 </head>
@@ -84,6 +99,12 @@ def _document(
   <p>Prüfblöcke: {checked_blocks}</p>
   <p>Sprachfunde: {len(findings)}</p>
   {empty_state}
+  <section class="check-context">
+    <h2>Prüfkontext</h2>
+    <p>Start-URL: {escaped_start_url}</p>
+    <p>Profil: {escaped_profile}</p>
+    <p>Sprache: {escaped_language}</p>
+  </section>
   <h2>Über dieses Werkzeug</h2>
   <p><strong>tu-web-linguacheck 0.1.0</strong></p>
   <p>Lokale Sprachprüfung für öffentlich erreichbare Websites</p>
@@ -143,6 +164,7 @@ def write_html_report(
     crawled_pages: int,
     checked_blocks: int,
     findings: Sequence[Finding],
+    context: ReportContext,
 ) -> None:
     """Schreibt einen lokalen HTML-Bericht mit Sprachfunden."""
     report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -151,6 +173,7 @@ def write_html_report(
             crawled_pages=crawled_pages,
             checked_blocks=checked_blocks,
             findings=findings,
+            context=context,
         ),
         encoding="utf-8",
     )

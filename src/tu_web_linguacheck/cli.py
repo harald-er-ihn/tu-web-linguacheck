@@ -25,7 +25,7 @@ from tu_web_linguacheck.languagetool import (
     LanguageToolUnavailableError,
 )
 from tu_web_linguacheck.models import Finding
-from tu_web_linguacheck.report import write_html_report
+from tu_web_linguacheck.report import ReportContext, write_html_report
 from tu_web_linguacheck.terminology import find_terminology_matches, load_terminology
 from tu_web_linguacheck.urls import prepare_crawl_url
 
@@ -289,6 +289,11 @@ def check_url(
             crawled_pages=1,
             checked_blocks=checked_blocks,
             findings=findings,
+            context=ReportContext(
+                start_url=prepared_url,
+                profile=config.profile,
+                language=config.check.language,
+            ),
         )
         typer.echo(f"HTML-Bericht: {report_path}")
 
@@ -487,5 +492,10 @@ def check_crawl(
             crawled_pages=len(pages),
             checked_blocks=checked_blocks,
             findings=findings,
+            context=ReportContext(
+                start_url=url,
+                profile=config.profile,
+                language=config.check.language,
+            ),
         )
         typer.echo(f"HTML-Bericht: {report_path}")
