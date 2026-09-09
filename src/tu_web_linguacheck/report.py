@@ -8,6 +8,7 @@ from pathlib import Path
 from markdown_it import MarkdownIt
 
 from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.project_metadata import load_project_metadata
 
 _CONTEXT_RADIUS = 80
 _MARKDOWN_RENDERER = MarkdownIt("commonmark", {"html": False})
@@ -72,6 +73,10 @@ def _document(
     escaped_start_url = escape(context.start_url)
     escaped_profile = escape(context.profile)
     escaped_language = escape(context.language)
+    project_metadata = load_project_metadata()
+    project_name_and_version = " ".join(
+        (escape(project_metadata.name), escape(project_metadata.version))
+    )
 
     return f"""\
 <!doctype html>
@@ -106,10 +111,10 @@ def _document(
     <p>Sprache: {escaped_language}</p>
   </section>
   <h2>Über dieses Werkzeug</h2>
-  <p><strong>tu-web-linguacheck 0.1.0</strong></p>
-  <p>Lokale Sprachprüfung für öffentlich erreichbare Websites</p>
-  <p>Autor: Dr. Harald Hutter</p>
-  <p>Lizenz: MIT-Lizenz</p>
+  <p><strong>{project_name_and_version}</strong></p>
+  <p>{escape(project_metadata.description)}</p>
+  <p>Autor: {escape(project_metadata.author)}</p>
+  <p>Lizenz: {escape(project_metadata.license_name)}</p>
   <table{table_hidden}>
     <thead>
       <tr>

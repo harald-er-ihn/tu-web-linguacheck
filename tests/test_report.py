@@ -1,6 +1,7 @@
 """Tests für lokale HTML-Berichte."""
 
 from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.project_metadata import ProjectMetadata
 from tu_web_linguacheck.report import (
     ReportContext,
     write_html_report,
@@ -112,9 +113,19 @@ Ein **lokales** Werkzeug.
     assert "<li>Keine &lt;Cloud-KI&gt; nutzen</li>" in html
 
 
-def test_write_html_report_includes_project_information(tmp_path) -> None:
-    """Der HTML-Bericht nennt die grundlegenden Projektinformationen."""
+def test_write_html_report_uses_escaped_project_metadata(monkeypatch, tmp_path) -> None:
+    """Der HTML-Bericht nutzt sicher escapte zentrale Projektmetadaten."""
     report_path = tmp_path / "crawl-report.html"
+    monkeypatch.setattr(
+        "tu_web_linguacheck.report.load_project_metadata",
+        lambda: ProjectMetadata(
+            name="Test <Werkzeug>",
+            version="2.3.4",
+            description="Testbeschreibung & Hinweis",
+            author="Test & Autor",
+            license_name="Test-Lizenz",
+        ),
+    )
 
     write_html_report(
         report_path,
@@ -131,10 +142,10 @@ def test_write_html_report_includes_project_information(tmp_path) -> None:
     html = report_path.read_text(encoding="utf-8")
 
     assert "<h2>Über dieses Werkzeug</h2>" in html
-    assert "tu-web-linguacheck 0.1.0" in html
-    assert "Lokale Sprachprüfung für öffentlich erreichbare Websites" in html
-    assert "Dr. Harald Hutter" in html
-    assert "MIT-Lizenz" in html
+    assert "Test &lt;Werkzeug&gt; 2.3.4" in html
+    assert "Testbeschreibung &amp; Hinweis" in html
+    assert "Test &amp; Autor" in html
+    assert "Test-Lizenz" in html
 
 
 def test_write_html_report_shows_empty_state_without_findings(tmp_path) -> None:
