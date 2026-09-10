@@ -1,6 +1,6 @@
 """Tests für die Kommandozeilenschnittstelle."""
 
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,too-many-lines
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -14,6 +14,7 @@ from tu_web_linguacheck.languagetool import (
     LanguageToolUnavailableError,
 )
 from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.project_metadata import ProjectMetadata
 from tu_web_linguacheck.report import ReportContext
 
 runner = CliRunner()
@@ -71,12 +72,22 @@ def test_help_displays_project_name_and_run_command() -> None:
     assert "run" in result.output
 
 
-def test_version_displays_package_version() -> None:
+def test_version_displays_package_version(monkeypatch) -> None:
     """Die CLI gibt ihre Paketversion aus."""
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_metadata",
+        lambda: ProjectMetadata(
+            name="tu-web-linguacheck",
+            version="2.3.4",
+            description="Testbeschreibung",
+            author="Testautor",
+            license_name="Testlizenz",
+        ),
+    )
     result = runner.invoke(app, ["--version"])
 
     assert result.exit_code == 0
-    assert result.output == "0.1.0\n"
+    assert result.output == "2.3.4\n"
 
 
 def test_inspect_displays_detected_translation_links(monkeypatch) -> None:

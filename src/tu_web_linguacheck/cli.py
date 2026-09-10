@@ -6,7 +6,6 @@ from pathlib import Path
 import typer
 from pydantic import ValidationError
 
-from tu_web_linguacheck import __version__
 from tu_web_linguacheck.config import load_project_config
 from tu_web_linguacheck.crawler import crawl_pages_with_content
 from tu_web_linguacheck.findings import (
@@ -25,6 +24,7 @@ from tu_web_linguacheck.languagetool import (
     LanguageToolUnavailableError,
 )
 from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.project_metadata import load_project_metadata
 from tu_web_linguacheck.report import ReportContext, write_html_report
 from tu_web_linguacheck.terminology import find_terminology_matches, load_terminology
 from tu_web_linguacheck.urls import prepare_crawl_url
@@ -47,7 +47,7 @@ app = typer.Typer(
 def version_callback(value: bool) -> None:
     """Gibt die installierte Programmversion aus."""
     if value:
-        typer.echo(__version__)
+        typer.echo(load_project_metadata().version)
         raise typer.Exit()
 
 
