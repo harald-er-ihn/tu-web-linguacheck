@@ -59,6 +59,11 @@ def test_write_html_report_creates_clickable_escaped_findings(tmp_path) -> None:
         '<div class="metric-card"><span>Sprachfunde</span><strong>1</strong></div>'
         in html
     )
+    assert ".report-header {" in html
+    assert ".metric-cards {\n      display: grid;" in html
+    assert ".result-status--findings {" in html
+    assert ".result-status--clear {" in html
+
     assert (
         '<a href="https://example.org/seite/?source=report&amp;lang=de">'
         "https://example.org/seite/?source=report&amp;lang=de</a>"

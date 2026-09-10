@@ -108,16 +108,81 @@ def _document(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sprachprüfbericht</title>
   <style>
-    body {{ font-family: system-ui, sans-serif; margin: 2rem; color: #1f2933; }}
-    table {{ border-collapse: collapse; width: 100%; }}
+    body {{
+      max-width: 76rem;
+      margin: 0 auto;
+      padding: 2.5rem;
+      color: #172033;
+      background: #f6f8fb;
+      font-family: system-ui, sans-serif;
+      line-height: 1.5;
+    }}
+    h1, h2 {{ color: #102a43; }}
+    h1 {{ margin: 0.25rem 0 0; font-size: 2rem; }}
+    h2 {{ margin-top: 0; font-size: 1.25rem; }}
+    .report-header {{
+      margin-bottom: 1.5rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 0.25rem solid #005aa0;
+    }}
+    .report-identity {{
+      margin: 0;
+      color: #486581;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }}
+    .result-overview {{
+      margin-bottom: 1.5rem;
+      padding: 1.5rem;
+      border: 1px solid #d9e2ec;
+      border-radius: 0.5rem;
+      background: #ffffff;
+    }}
+    .metric-cards {{
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }}
+    .metric-card {{
+      padding: 1rem;
+      border: 1px solid #d9e2ec;
+      border-radius: 0.375rem;
+      background: #f8fafc;
+    }}
+    .metric-card span {{ display: block; color: #486581; font-size: 0.875rem; }}
+    .metric-card strong {{ display: block; color: #102a43; font-size: 1.75rem; }}
+    .result-status {{
+      margin: 0 0 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 0.25rem;
+      font-weight: 700;
+    }}
+    .result-status--findings {{ color: #7c2d12; background: #fff7ed; }}
+    .result-status--clear {{ color: #166534; background: #f0fdf4; }}
+    table {{ border-collapse: collapse; width: 100%; background: #ffffff; }}
     th, td {{ border: 1px solid #cbd5e1; padding: 0.6rem; text-align: left; }}
     th {{ background: #e2e8f0; }}
     tr:nth-child(even) {{ background: #f8fafc; }}
     a {{ color: #005aa0; }}
     mark {{ background: #fef08a; padding: 0.1rem; }}
-    .empty-state {{ background: #ecfdf5; border: 1px solid #86efac; padding: 1rem; }}
-    .check-context {{ background: #eff6ff; border: 1px solid #93c5fd; padding: 1rem; }}
+    .empty-state {{
+      padding: 1rem;
+      border: 1px solid #86efac;
+      border-radius: 0.25rem;
+      background: #ecfdf5;
+    }}
+    .check-context {{
+      margin-bottom: 1.5rem;
+      padding: 1.25rem;
+      border: 1px solid #93c5fd;
+      border-radius: 0.5rem;
+      background: #eff6ff;
+    }}
     pre {{ margin: 0; white-space: pre-wrap; font: inherit; }}
+    @media (max-width: 48rem) {{
+      body {{ padding: 1rem; }}
+      .metric-cards {{ grid-template-columns: 1fr; }}
+    }}
   </style>
 </head>
 <body>
