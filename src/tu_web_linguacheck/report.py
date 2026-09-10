@@ -60,12 +60,10 @@ def _suggestions_text(suggestions: Sequence[str]) -> str:
 
 def _finding_row(finding: Finding) -> str:
     """Erzeugt eine sicher escapte Tabellenzeile für einen Sprachfund."""
-    url = escape(finding.url, quote=True)
     suggestions = _suggestions_text(finding.suggestions)
 
     return f"""\
 <tr>
-  <td><a href="{url}">{url}</a></td>
   <td>{escape(finding.category)}</td>
   <td>{escape(finding.severity)}</td>
   <td>{escape(finding.message)}</td>
@@ -73,6 +71,40 @@ def _finding_row(finding: Finding) -> str:
   <td>{escape(suggestions)}</td>
   <td><pre>{_marked_context(finding)}</pre></td>
 </tr>"""
+
+
+def _finding_table(url: str, findings: Sequence[Finding]) -> str:
+    """Erzeugt eine Fundtabelle mit klickbarer URL-Überschrift."""
+    escaped_url = escape(url, quote=True)
+    rows = "\n".join(_finding_row(finding) for finding in findings)
+
+    return f"""\
+  <section class="findings-by-url">
+    <h2 class="findings-url"><a href="{escaped_url}">{escaped_url}</a></h2>
+    <table>
+      <colgroup>
+        <col class="finding-category">
+        <col class="finding-severity">
+        <col class="finding-message">
+        <col class="finding-rule">
+        <col class="finding-suggestions">
+        <col class="finding-context">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Kategorie</th>
+          <th>Schweregrad</th>
+          <th>Meldung</th>
+          <th>Regel</th>
+          <th>Vorschläge</th>
+          <th>Kontext</th>
+        </tr>
+      </thead>
+      <tbody>
+{rows}
+      </tbody>
+    </table>
+  </section>"""
 
 
 def _document(
@@ -83,8 +115,13 @@ def _document(
     context: ReportContext,
 ) -> str:
     """Erzeugt das vollständige HTML-Dokument für den Sprachprüfbericht."""
-    rows = "\n".join(_finding_row(finding) for finding in findings)
-    table_hidden = " hidden" if not findings else ""
+    finding_groups: dict[str, list[Finding]] = {}
+    for finding in findings:
+        finding_groups.setdefault(finding.url, []).append(finding)
+    finding_tables = "\n".join(
+        _finding_table(url, grouped_findings)
+        for url, grouped_findings in finding_groups.items()
+    )
     empty_state = (
         "" if findings else '<p class="empty-state">Keine Sprachfunde festgestellt.</p>'
     )
@@ -177,7 +214,18 @@ def _document(
     }}
     .result-status--findings {{ color: #7c2d12; background: #fff7ed; }}
     .result-status--clear {{ color: #166534; background: #f0fdf4; }}
-    table {{ border-collapse: collapse; width: 100%; background: #ffffff; }}
+    table {{
+      border-collapse: collapse;
+      width: 100%;
+      table-layout: fixed;
+      background: #ffffff;
+    }}
+    .finding-category {{ width: 8%; }}
+    .finding-severity {{ width: 8%; }}
+    .finding-message {{ width: 20%; }}
+    .finding-rule {{ width: 10%; }}
+    .finding-suggestions {{ width: 22%; }}
+    .finding-context {{ width: 32%; }}
     th, td {{ border: 1px solid #cbd5e1; padding: 0.6rem; text-align: left; }}
     th {{ background: #e2e8f0; }}
     tr:nth-child(even) {{ background: #f8fafc; }}
@@ -228,22 +276,7 @@ def _document(
   <p>Autor: {escape(project_metadata.author)}</p>
   <p>Lizenz: {escape(project_metadata.license_name)}</p>
   <p><a href="report-information.html">Informationen zum Sprachprüfbericht</a></p>
-  <table{table_hidden}>
-    <thead>
-      <tr>
-        <th>URL</th>
-        <th>Kategorie</th>
-        <th>Schweregrad</th>
-        <th>Meldung</th>
-        <th>Regel</th>
-        <th>Vorschläge</th>
-        <th>Kontext</th>
-      </tr>
-    </thead>
-    <tbody>
-{rows}
-    </tbody>
-  </table>
+  {finding_tables}
 </body>
 </html>
 """

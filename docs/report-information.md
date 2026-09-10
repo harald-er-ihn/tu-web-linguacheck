@@ -39,8 +39,3 @@ nutzt keine externen Cloud-KI- oder Sprachprüfungs-APIs.
 TU-spezifische Regeln werden nachvollziehbar über Quellen-IDs dokumentiert.
 Zugriffsgeschützte, interne oder in der Weitergabe ungeklärte
 Originaldokumente werden nicht in das öffentliche Projekt aufgenommen.
-
-Weiterführende Informationen:
-
-- [Projektübersicht und technische Grundlagen](../README.md)
-- [Dokumentation zu Quellen für TU-spezifische Regeln](rule-sources/README.md)

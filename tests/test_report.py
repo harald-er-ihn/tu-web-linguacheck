@@ -260,3 +260,99 @@ def test_write_html_report_shows_escaped_check_context(tmp_path) -> None:
     assert "Start-URL: https://example.org/start?source=&lt;report&gt;" in html
     assert "Profil: tu-de" in html
     assert "Sprache: de-DE" in html
+
+
+def test_write_html_report_groups_findings_by_url(tmp_path) -> None:
+    """Der HTML-Bericht gruppiert Funde in Tabellen unter ihren URLs."""
+    report_path = tmp_path / "crawl-report.html"
+    findings = [
+        Finding(
+            url="https://example.org/erste-seite/",
+            category="grammar",
+            severity="warning",
+            message="Erste Meldung.",
+            offset=0,
+            length=6,
+            suggestions=("Erste Korrektur",),
+            context="Erster Fundkontext.",
+            profile="generic-de",
+            source_rule_id="FIRST_RULE",
+        ),
+        Finding(
+            url="https://example.org/zweite-seite/",
+            category="spelling",
+            severity="warning",
+            message="Zweite Meldung.",
+            offset=0,
+            length=7,
+            suggestions=("Zweite Korrektur",),
+            context="Zweiter Fundkontext.",
+            profile="generic-de",
+            source_rule_id="SECOND_RULE",
+        ),
+    ]
+
+    write_html_report(
+        report_path,
+        crawled_pages=2,
+        checked_blocks=2,
+        findings=findings,
+        context=ReportContext(
+            start_url="https://example.org/",
+            profile="generic-de",
+            language="de-DE",
+        ),
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert "<th>URL</th>" not in html
+    assert (
+        '<h2 class="findings-url"><a href="https://example.org/erste-seite/">'
+        "https://example.org/erste-seite/</a></h2>"
+    ) in html
+    assert (
+        '<h2 class="findings-url"><a href="https://example.org/zweite-seite/">'
+        "https://example.org/zweite-seite/</a></h2>"
+    ) in html
+    assert html.count("<table>") == 2
+
+
+def test_write_html_report_sets_readable_finding_column_widths(tmp_path) -> None:
+    """Der HTML-Bericht reserviert breite Spalten für Fundinhalte."""
+    report_path = tmp_path / "report.html"
+    finding = Finding(
+        url="https://example.org/",
+        category="grammar",
+        severity="warning",
+        message="Testmeldung.",
+        offset=0,
+        length=4,
+        suggestions=("Test",),
+        context="Testkontext.",
+        profile="generic-de",
+        source_rule_id="TEST_RULE",
+    )
+
+    write_html_report(
+        report_path,
+        crawled_pages=1,
+        checked_blocks=1,
+        findings=[finding],
+        context=ReportContext(
+            start_url="https://example.org/",
+            profile="generic-de",
+            language="de-DE",
+        ),
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert '<col class="finding-category">' in html
+    assert '<col class="finding-severity">' in html
+    assert '<col class="finding-message">' in html
+    assert '<col class="finding-suggestions">' in html
+    assert '<col class="finding-context">' in html
+    assert ".finding-category { width: 8%; }" in html
+    assert ".finding-severity { width: 8%; }" in html
+    assert ".finding-context { width: 32%; }" in html
