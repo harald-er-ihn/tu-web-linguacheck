@@ -12,6 +12,9 @@ from tu_web_linguacheck.project_metadata import load_project_metadata
 
 _CONTEXT_RADIUS = 80
 _MARKDOWN_RENDERER = MarkdownIt("commonmark", {"html": False})
+_REPORT_INFORMATION_PATH = (
+    Path(__file__).resolve().parents[2] / "docs" / "report-information.md"
+)
 
 
 @dataclass(frozen=True)
@@ -224,6 +227,7 @@ def _document(
   <p>{escape(project_metadata.description)}</p>
   <p>Autor: {escape(project_metadata.author)}</p>
   <p>Lizenz: {escape(project_metadata.license_name)}</p>
+  <p><a href="report-information.html">Informationen zum Sprachprüfbericht</a></p>
   <table{table_hidden}>
     <thead>
       <tr>
@@ -290,6 +294,10 @@ def write_html_report(
             context=context,
         ),
         encoding="utf-8",
+    )
+    write_project_info_page(
+        report_path.with_name("report-information.html"),
+        markdown=_REPORT_INFORMATION_PATH.read_text(encoding="utf-8"),
     )
 
 
