@@ -70,6 +70,28 @@ def _document(
     empty_state = (
         "" if findings else '<p class="empty-state">Keine Sprachfunde festgestellt.</p>'
     )
+    result_status = (
+        (
+            '<p class="result-status result-status--findings">'
+            f"{len(findings)} Sprachfund{'e' if len(findings) != 1 else ''} "
+            "festgestellt.</p>"
+        )
+        if findings
+        else (
+            '<p class="result-status result-status--clear">'
+            "Keine Sprachfunde festgestellt.</p>"
+        )
+    )
+    metric_cards = "\n".join(
+        (
+            '<div class="metric-card"><span>Gecrawlte Seiten</span>'
+            f"<strong>{crawled_pages}</strong></div>",
+            '<div class="metric-card"><span>Prüfblöcke</span>'
+            f"<strong>{checked_blocks}</strong></div>",
+            '<div class="metric-card"><span>Sprachfunde</span>'
+            f"<strong>{len(findings)}</strong></div>",
+        )
+    )
     escaped_start_url = escape(context.start_url)
     escaped_profile = escape(context.profile)
     escaped_language = escape(context.language)
@@ -99,10 +121,17 @@ def _document(
   </style>
 </head>
 <body>
-  <h1>Sprachprüfbericht</h1>
-  <p>Gecrawlte Seiten: {crawled_pages}</p>
-  <p>Prüfblöcke: {checked_blocks}</p>
-  <p>Sprachfunde: {len(findings)}</p>
+  <header class="report-header">
+    <p class="report-identity">{project_name_and_version}</p>
+    <h1>Sprachprüfbericht</h1>
+  </header>
+  <section class="result-overview">
+    <h2>Ergebnisübersicht</h2>
+    {result_status}
+    <div class="metric-cards">
+      {metric_cards}
+    </div>
+  </section>
   {empty_state}
   <section class="check-context">
     <h2>Prüfkontext</h2>

@@ -40,9 +40,25 @@ def test_write_html_report_creates_clickable_escaped_findings(tmp_path) -> None:
     html = report_path.read_text(encoding="utf-8")
 
     assert "<title>Sprachprüfbericht</title>" in html
-    assert "Gecrawlte Seiten: 2" in html
-    assert "Prüfblöcke: 5" in html
-    assert "Sprachfunde: 1" in html
+    assert '<header class="report-header">' in html
+    assert "<h1>Sprachprüfbericht</h1>" in html
+    assert '<section class="result-overview">' in html
+    assert (
+        '<p class="result-status result-status--findings">'
+        "1 Sprachfund festgestellt.</p>"
+    ) in html
+    assert (
+        '<div class="metric-card"><span>Gecrawlte Seiten</span><strong>2</strong></div>'
+        in html
+    )
+    assert (
+        '<div class="metric-card"><span>Prüfblöcke</span><strong>5</strong></div>'
+        in html
+    )
+    assert (
+        '<div class="metric-card"><span>Sprachfunde</span><strong>1</strong></div>'
+        in html
+    )
     assert (
         '<a href="https://example.org/seite/?source=report&amp;lang=de">'
         "https://example.org/seite/?source=report&amp;lang=de</a>"
@@ -167,6 +183,10 @@ def test_write_html_report_shows_empty_state_without_findings(tmp_path) -> None:
     html = report_path.read_text(encoding="utf-8")
 
     assert '<p class="empty-state">Keine Sprachfunde festgestellt.</p>' in html
+    assert (
+        '<p class="result-status result-status--clear">'
+        "Keine Sprachfunde festgestellt.</p>"
+    ) in html
 
 
 def test_write_html_report_shows_escaped_check_context(tmp_path) -> None:
