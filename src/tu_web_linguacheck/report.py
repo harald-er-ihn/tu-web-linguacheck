@@ -40,10 +40,25 @@ def _marked_context(finding: Finding) -> str:
     )
 
 
+def _suggestions_text(suggestions: Sequence[str]) -> str:
+    """Begrenzt Vorschläge für eine lesbare Funddarstellung."""
+    visible_suggestions = suggestions[:5]
+    remaining_suggestions = len(suggestions) - len(visible_suggestions)
+    visible_text = ", ".join(visible_suggestions) or "-"
+
+    if not remaining_suggestions:
+        return visible_text
+
+    remaining_text = (
+        "weiteren Vorschlag" if remaining_suggestions == 1 else "weitere Vorschläge"
+    )
+    return f"{visible_text} … und {remaining_suggestions} {remaining_text}"
+
+
 def _finding_row(finding: Finding) -> str:
     """Erzeugt eine sicher escapte Tabellenzeile für einen Sprachfund."""
     url = escape(finding.url, quote=True)
-    suggestions = ", ".join(finding.suggestions) or "-"
+    suggestions = _suggestions_text(finding.suggestions)
 
     return f"""\
 <tr>

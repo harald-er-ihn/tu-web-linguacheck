@@ -72,6 +72,49 @@ def test_write_html_report_creates_clickable_escaped_findings(tmp_path) -> None:
     assert "Ein &lt;fehlerh<mark>afte</mark>r&gt; Test." in html
 
 
+def test_write_html_report_limits_suggestions(tmp_path) -> None:
+    """Der HTML-Bericht begrenzt lange Vorschlagslisten nachvollziehbar."""
+    report_path = tmp_path / "crawl-report.html"
+    finding = Finding(
+        url="https://example.org/",
+        category="misspelling",
+        severity="warning",
+        message="Testmeldung.",
+        offset=0,
+        length=4,
+        suggestions=(
+            "Vorschlag 1",
+            "Vorschlag 2",
+            "Vorschlag 3",
+            "Vorschlag 4",
+            "Vorschlag 5",
+            "Vorschlag 6",
+            "Vorschlag 7",
+        ),
+        context="Testkontext",
+        profile="generic-de",
+        source_rule_id="TEST_RULE",
+    )
+
+    write_html_report(
+        report_path,
+        crawled_pages=1,
+        checked_blocks=1,
+        findings=[finding],
+        context=ReportContext(
+            start_url="https://example.org/",
+            profile="generic-de",
+            language="de-DE",
+        ),
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert "Vorschlag 1, Vorschlag 2, Vorschlag 3, Vorschlag 4, Vorschlag 5" in html
+    assert "… und 2 weitere Vorschläge" in html
+    assert "Vorschlag 6" not in html
+
+
 def test_write_html_report_limits_and_marks_context(tmp_path) -> None:
     """Der HTML-Bericht kürzt Kontext und markiert die Fundstelle sicher."""
     report_path = tmp_path / "crawl-report.html"
