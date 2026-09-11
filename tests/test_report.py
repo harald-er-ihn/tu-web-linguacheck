@@ -279,6 +279,18 @@ def test_write_html_report_groups_findings_by_url(tmp_path) -> None:
             source_rule_id="FIRST_RULE",
         ),
         Finding(
+            url="https://example.org/erste-seite/",
+            category="grammar",
+            severity="warning",
+            message="Dritte Meldung.",
+            offset=0,
+            length=6,
+            suggestions=("Dritte Korrektur",),
+            context="Dritter Fundkontext.",
+            profile="generic-de",
+            source_rule_id="THIRD_RULE",
+        ),
+        Finding(
             url="https://example.org/zweite-seite/",
             category="spelling",
             severity="warning",
@@ -317,8 +329,14 @@ def test_write_html_report_groups_findings_by_url(tmp_path) -> None:
     ) in html
     assert html.count("<table>") == 2
     assert "<h2>Inhaltsverzeichnis</h2>" in html
-    assert '<a href="#findings-url-1">https://example.org/erste-seite/</a>' in html
-    assert '<a href="#findings-url-2">https://example.org/zweite-seite/</a>' in html
+    assert (
+        '<a href="#findings-url-1">https://example.org/erste-seite/</a> (2 Funde)'
+        in html
+    )
+    assert (
+        '<a href="#findings-url-2">https://example.org/zweite-seite/</a> (1 Fund)'
+        in html
+    )
     assert '<section class="findings-by-url" id="findings-url-1">' in html
     assert '<section class="findings-by-url" id="findings-url-2">' in html
 

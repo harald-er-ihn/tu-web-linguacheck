@@ -122,8 +122,14 @@ def _finding_sections(findings: Sequence[Finding]) -> tuple[str, str]:
         "    <h2>Inhaltsverzeichnis</h2>\n"
         "    <ol>\n"
         + "\n".join(
-            f'      <li><a href="#findings-url-{url_index}">{escape(url)}</a></li>'
-            for url_index, (url, _) in enumerate(grouped_findings, start=1)
+            (
+                f'      <li><a href="#findings-url-{url_index}">{escape(url)}</a> '
+                f"({len(findings_for_url)} "
+                f"{'Fund' if len(findings_for_url) == 1 else 'Funde'})</li>"
+            )
+            for url_index, (url, findings_for_url) in enumerate(
+                grouped_findings, start=1
+            )
         )
         + "\n    </ol>\n"
         "  </section>"
