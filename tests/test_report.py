@@ -316,6 +316,11 @@ def test_write_html_report_groups_findings_by_url(tmp_path) -> None:
         "https://example.org/zweite-seite/</a></h2>"
     ) in html
     assert html.count("<table>") == 2
+    assert "<h2>Inhaltsverzeichnis</h2>" in html
+    assert '<a href="#findings-url-1">https://example.org/erste-seite/</a>' in html
+    assert '<a href="#findings-url-2">https://example.org/zweite-seite/</a>' in html
+    assert '<section class="findings-by-url" id="findings-url-1">' in html
+    assert '<section class="findings-by-url" id="findings-url-2">' in html
 
 
 def test_write_html_report_sets_readable_finding_column_widths(tmp_path) -> None:
@@ -356,3 +361,4 @@ def test_write_html_report_sets_readable_finding_column_widths(tmp_path) -> None
     assert ".finding-category { width: 8%; }" in html
     assert ".finding-severity { width: 8%; }" in html
     assert ".finding-context { width: 32%; }" in html
+    assert "Inhaltsverzeichnis" not in html

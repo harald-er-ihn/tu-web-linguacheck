@@ -73,13 +73,13 @@ def _finding_row(finding: Finding) -> str:
 </tr>"""
 
 
-def _finding_table(url: str, findings: Sequence[Finding]) -> str:
+def _finding_table(url: str, url_index: int, findings: Sequence[Finding]) -> str:
     """Erzeugt eine Fundtabelle mit klickbarer URL-Überschrift."""
     escaped_url = escape(url, quote=True)
     rows = "\n".join(_finding_row(finding) for finding in findings)
 
     return f"""\
-  <section class="findings-by-url">
+  <section class="findings-by-url" id="findings-url-{url_index}">
     <h2 class="findings-url"><a href="{escaped_url}">{escaped_url}</a></h2>
     <table>
       <colgroup>
@@ -107,6 +107,32 @@ def _finding_table(url: str, findings: Sequence[Finding]) -> str:
   </section>"""
 
 
+def _finding_sections(findings: Sequence[Finding]) -> tuple[str, str]:
+    """Erzeugt Fundtabellen und bei mehreren URLs ein Inhaltsverzeichnis."""
+    finding_groups: dict[str, list[Finding]] = {}
+    for finding in findings:
+        finding_groups.setdefault(finding.url, []).append(finding)
+    grouped_findings = tuple(finding_groups.items())
+    finding_tables = "\n".join(
+        _finding_table(url, url_index, findings_for_url)
+        for url_index, (url, findings_for_url) in enumerate(grouped_findings, start=1)
+    )
+    table_of_contents = (
+        '  <section class="table-of-contents">\n'
+        "    <h2>Inhaltsverzeichnis</h2>\n"
+        "    <ol>\n"
+        + "\n".join(
+            f'      <li><a href="#findings-url-{url_index}">{escape(url)}</a></li>'
+            for url_index, (url, _) in enumerate(grouped_findings, start=1)
+        )
+        + "\n    </ol>\n"
+        "  </section>"
+        if len(grouped_findings) > 1
+        else ""
+    )
+    return finding_tables, table_of_contents
+
+
 def _document(
     *,
     crawled_pages: int,
@@ -115,13 +141,7 @@ def _document(
     context: ReportContext,
 ) -> str:
     """Erzeugt das vollständige HTML-Dokument für den Sprachprüfbericht."""
-    finding_groups: dict[str, list[Finding]] = {}
-    for finding in findings:
-        finding_groups.setdefault(finding.url, []).append(finding)
-    finding_tables = "\n".join(
-        _finding_table(url, grouped_findings)
-        for url, grouped_findings in finding_groups.items()
-    )
+    finding_tables, table_of_contents = _finding_sections(findings)
     empty_state = (
         "" if findings else '<p class="empty-state">Keine Sprachfunde festgestellt.</p>'
     )
@@ -276,6 +296,7 @@ def _document(
   <p>Autor: {escape(project_metadata.author)}</p>
   <p>Lizenz: {escape(project_metadata.license_name)}</p>
   <p><a href="report-information.html">Informationen zum Sprachprüfbericht</a></p>
+  {table_of_contents}
   {finding_tables}
 </body>
 </html>
