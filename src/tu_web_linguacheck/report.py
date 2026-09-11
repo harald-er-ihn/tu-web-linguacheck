@@ -61,13 +61,14 @@ def _suggestions_text(suggestions: Sequence[str]) -> str:
 def _finding_row(finding: Finding) -> str:
     """Erzeugt eine sicher escapte Tabellenzeile für einen Sprachfund."""
     suggestions = _suggestions_text(finding.suggestions)
+    message = escape(finding.message)
+    source_rule_id = escape(finding.source_rule_id)
 
     return f"""\
 <tr>
   <td>{escape(finding.category)}</td>
   <td>{escape(finding.severity)}</td>
-  <td>{escape(finding.message)}</td>
-  <td>{escape(finding.source_rule_id)}</td>
+  <td>{message}<small class="finding-rule">Regel: {source_rule_id}</small></td>
   <td>{escape(suggestions)}</td>
   <td><pre>{_marked_context(finding)}</pre></td>
 </tr>"""
@@ -86,7 +87,6 @@ def _finding_table(url: str, url_index: int, findings: Sequence[Finding]) -> str
         <col class="finding-category">
         <col class="finding-severity">
         <col class="finding-message">
-        <col class="finding-rule">
         <col class="finding-suggestions">
         <col class="finding-context">
       </colgroup>
@@ -95,7 +95,6 @@ def _finding_table(url: str, url_index: int, findings: Sequence[Finding]) -> str
           <th>Kategorie</th>
           <th>Schweregrad</th>
           <th>Meldung</th>
-          <th>Regel</th>
           <th>Vorschläge</th>
           <th>Kontext</th>
         </tr>
@@ -252,9 +251,14 @@ def _document(
     .finding-category {{ width: 8%; }}
     .finding-severity {{ width: 8%; }}
     .finding-message {{ width: 20%; }}
-    .finding-rule {{ width: 10%; }}
+    .finding-rule {{
+      display: block;
+      margin-top: 0.25rem;
+      color: #486581;
+      font-size: 0.875rem;
+    }}
     .finding-suggestions {{ width: 22%; }}
-    .finding-context {{ width: 32%; }}
+    .finding-context {{ width: 42%; }}
     th, td {{ border: 1px solid #cbd5e1; padding: 0.6rem; text-align: left; }}
     th {{ background: #e2e8f0; }}
     tr:nth-child(even) {{ background: #f8fafc; }}

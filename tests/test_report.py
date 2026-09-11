@@ -349,7 +349,10 @@ def test_write_html_report_sets_readable_finding_column_widths(tmp_path) -> None
     assert '<col class="finding-message">' in html
     assert '<col class="finding-suggestions">' in html
     assert '<col class="finding-context">' in html
+    assert '<col class="finding-rule">' not in html
+    assert "<th>Regel</th>" not in html
+    assert '<small class="finding-rule">Regel: TEST_RULE</small>' in html
     assert ".finding-category { width: 8%; }" in html
     assert ".finding-severity { width: 8%; }" in html
-    assert ".finding-context { width: 32%; }" in html
+    assert ".finding-context { width: 42%; }" in html
     assert "Inhaltsverzeichnis" not in html
