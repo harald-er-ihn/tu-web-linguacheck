@@ -63,12 +63,18 @@ def _finding_row(finding: Finding) -> str:
     suggestions = _suggestions_text(finding.suggestions)
     message = escape(finding.message)
     source_rule_id = escape(finding.source_rule_id)
+    classification = (
+        f"Kategorie: {escape(finding.category)} · "
+        f"Schweregrad: {escape(finding.severity)}"
+    )
+    finding_message = (
+        f'<small class="finding-classification">{classification}</small>'
+        f'{message}<small class="finding-rule">Regel: {source_rule_id}</small>'
+    )
 
     return f"""\
 <tr>
-  <td>{escape(finding.category)}</td>
-  <td>{escape(finding.severity)}</td>
-  <td>{message}<small class="finding-rule">Regel: {source_rule_id}</small></td>
+  <td>{finding_message}</td>
   <td>{escape(suggestions)}</td>
   <td><pre>{_marked_context(finding)}</pre></td>
 </tr>"""
@@ -84,16 +90,12 @@ def _finding_table(url: str, url_index: int, findings: Sequence[Finding]) -> str
     <h2 class="findings-url"><a href="{escaped_url}">{escaped_url}</a></h2>
     <table>
       <colgroup>
-        <col class="finding-category">
-        <col class="finding-severity">
         <col class="finding-message">
         <col class="finding-suggestions">
         <col class="finding-context">
       </colgroup>
       <thead>
         <tr>
-          <th>Kategorie</th>
-          <th>Schweregrad</th>
           <th>Meldung</th>
           <th>Vorschläge</th>
           <th>Kontext</th>
@@ -248,9 +250,14 @@ def _document(
       table-layout: fixed;
       background: #ffffff;
     }}
-    .finding-category {{ width: 8%; }}
-    .finding-severity {{ width: 8%; }}
-    .finding-message {{ width: 20%; }}
+    .finding-message {{ width: 36%; }}
+    .finding-classification {{
+      display: block;
+      margin-bottom: 0.25rem;
+      color: #486581;
+      font-size: 0.875rem;
+      font-weight: 700;
+    }}
     .finding-rule {{
       display: block;
       margin-top: 0.25rem;
