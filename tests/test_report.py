@@ -5,7 +5,6 @@ from tu_web_linguacheck.project_metadata import ProjectMetadata
 from tu_web_linguacheck.report import (
     ReportContext,
     write_html_report,
-    write_project_info_page,
 )
 
 
@@ -149,32 +148,6 @@ def test_write_html_report_limits_and_marks_context(tmp_path) -> None:
     expected_context = f"…{'a' * 80}<mark>&lt;istf&gt;</mark>{'b' * 80}…"
     assert expected_context in html
     assert finding.context not in html
-
-
-def test_write_project_info_page_renders_safe_markdown(tmp_path) -> None:
-    """Die Projektinformationsseite formatiert und escaped README-Markdown."""
-    page_path = tmp_path / "projektinformationen.html"
-    markdown = """\
-# tu-web-linguacheck
-
-Ein **lokales** Werkzeug.
-
-## Ziele
-
-- HTML-Seiten prüfen
-- Keine <Cloud-KI> nutzen
-"""
-
-    write_project_info_page(page_path, markdown=markdown)
-
-    html = page_path.read_text(encoding="utf-8")
-
-    assert "<title>Über tu-web-linguacheck</title>" in html
-    assert "<h1>tu-web-linguacheck</h1>" in html
-    assert "<strong>lokales</strong>" in html
-    assert "<h2>Ziele</h2>" in html
-    assert "<li>HTML-Seiten prüfen</li>" in html
-    assert "<li>Keine &lt;Cloud-KI&gt; nutzen</li>" in html
 
 
 def test_write_html_report_uses_escaped_project_metadata(monkeypatch, tmp_path) -> None:

@@ -148,6 +148,9 @@ def _document(
 ) -> str:
     """Erzeugt das vollständige HTML-Dokument für den Sprachprüfbericht."""
     finding_tables, table_of_contents = _finding_sections(findings)
+    report_information = _MARKDOWN_RENDERER.render(
+        _REPORT_INFORMATION_PATH.read_text(encoding="utf-8")
+    )
     empty_state = (
         "" if findings else '<p class="empty-state">Keine Sprachfunde festgestellt.</p>'
     )
@@ -277,7 +280,7 @@ def _document(
     }}
   </style>
 </head>
-<body>
+<body id="report-top">
   <header class="report-header">
     <p class="report-identity">{project_name_and_version}</p>
     <h1>Sprachprüfbericht</h1>
@@ -301,36 +304,13 @@ def _document(
   <p>{escape(project_metadata.description)}</p>
   <p>Autor: {escape(project_metadata.author)}</p>
   <p>Lizenz: {escape(project_metadata.license_name)}</p>
-  <p><a href="report-information.html">Informationen zum Sprachprüfbericht</a></p>
+  <p><a href="#report-information">Informationen zum Sprachprüfbericht</a></p>
   {table_of_contents}
   {finding_tables}
-</body>
-</html>
-"""
-
-
-def _project_info_document(markdown: str) -> str:
-    """Erzeugt eine eigenständige, HTML-sichere Projektinformationsseite."""
-    content = _MARKDOWN_RENDERER.render(markdown)
-
-    return f"""\
-<!doctype html>
-<html lang="de">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Über tu-web-linguacheck</title>
-  <style>
-    body {{ font-family: system-ui, sans-serif; margin: 2rem; color: #1f2933; }}
-    main {{ max-width: 70rem; }}
-    a {{ color: #005aa0; }}
-    img {{ height: auto; max-width: 100%; }}
-  </style>
-</head>
-<body>
-  <main>
-{content}
-  </main>
+  <section id="report-information">
+    {report_information}
+    <p><a href="#report-top">Nach oben</a></p>
+  </section>
 </body>
 </html>
 """
@@ -355,13 +335,3 @@ def write_html_report(
         ),
         encoding="utf-8",
     )
-    write_project_info_page(
-        report_path.with_name("report-information.html"),
-        markdown=_REPORT_INFORMATION_PATH.read_text(encoding="utf-8"),
-    )
-
-
-def write_project_info_page(page_path: Path, *, markdown: str) -> None:
-    """Schreibt eine lokale Projektinformationsseite aus sicherem Markdown."""
-    page_path.parent.mkdir(parents=True, exist_ok=True)
-    page_path.write_text(_project_info_document(markdown), encoding="utf-8")

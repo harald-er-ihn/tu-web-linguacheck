@@ -104,8 +104,8 @@ def test_check_url_writes_html_report(monkeypatch, tmp_path) -> None:
     assert f"HTML-Bericht: {report_path}" in result.output
 
 
-def test_check_url_writes_linked_report_information_page(monkeypatch, tmp_path) -> None:
-    """Der Einzelurl-Report erhält eine nebenliegende Informationsseite."""
+def test_check_url_embeds_report_information(monkeypatch, tmp_path) -> None:
+    """Der Einzelurl-Report enthält eingebettete Sprachbericht-Informationen."""
 
     config_path = tmp_path / "config.yaml"
     report_path = tmp_path / "url-report.html"
@@ -151,10 +151,11 @@ def test_check_url_writes_linked_report_information_page(monkeypatch, tmp_path) 
         ],
     )
 
-    information_path = tmp_path / "report-information.html"
+    html = report_path.read_text(encoding="utf-8")
+
     assert result.exit_code == 0
-    assert information_path.is_file()
-    assert "Informationen zum Sprachprüfbericht" in information_path.read_text(
-        encoding="utf-8"
-    )
-    assert 'href="report-information.html"' in report_path.read_text(encoding="utf-8")
+    assert not (tmp_path / "report-information.html").exists()
+    assert 'href="#report-information"' in html
+    assert '<section id="report-information">' in html
+    assert "<h1>Informationen zum Sprachprüfbericht</h1>" in html
+    assert 'href="#report-top">Nach oben</a>' in html
