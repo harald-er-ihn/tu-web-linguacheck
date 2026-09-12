@@ -50,16 +50,16 @@ def test_write_html_report_creates_clickable_escaped_findings(tmp_path) -> None:
         "1 Sprachfund festgestellt.</p>"
     ) in html
     assert (
-        '<div class="metric-card"><span>Gecrawlte Seiten</span><strong>2</strong></div>'
-        in html
+        '<div class="metric-card"><p class="metric-label">Gecrawlte Seiten</p>'
+        "<strong>2</strong></div>" in html
     )
     assert (
-        '<div class="metric-card"><span>Prüfblöcke</span><strong>5</strong></div>'
-        in html
+        '<div class="metric-card"><p class="metric-label">Prüfblöcke</p>'
+        "<strong>5</strong></div>" in html
     )
     assert (
-        '<div class="metric-card"><span>Sprachfunde</span><strong>1</strong></div>'
-        in html
+        '<div class="metric-card"><p class="metric-label">Sprachfunde</p>'
+        "<strong>1</strong></div>" in html
     )
     assert ".report-header {" in html
     assert ".metric-cards {\n      display: grid;" in html

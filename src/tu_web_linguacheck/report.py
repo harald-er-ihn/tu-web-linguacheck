@@ -170,11 +170,11 @@ def _document(
     )
     metric_cards = "\n".join(
         (
-            '<div class="metric-card"><span>Gecrawlte Seiten</span>'
+            '<div class="metric-card"><p class="metric-label">Gecrawlte Seiten</p>'
             f"<strong>{crawled_pages}</strong></div>",
-            '<div class="metric-card"><span>Prüfblöcke</span>'
+            '<div class="metric-card"><p class="metric-label">Prüfblöcke</p>'
             f"<strong>{checked_blocks}</strong></div>",
-            '<div class="metric-card"><span>Sprachfunde</span>'
+            '<div class="metric-card"><p class="metric-label">Sprachfunde</p>'
             f"<strong>{len(findings)}</strong></div>",
         )
     )
@@ -235,7 +235,7 @@ def _document(
       border-radius: 0.375rem;
       background: #f8fafc;
     }}
-    .metric-card span {{ display: block; color: #486581; font-size: 0.875rem; }}
+    .metric-label {{ display: block; margin: 0; color: #486581; font-size: 0.875rem; }}
     .metric-card strong {{ display: block; color: #102a43; font-size: 1.75rem; }}
     .result-status {{
       margin: 0 0 1rem;
