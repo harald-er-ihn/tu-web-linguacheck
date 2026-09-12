@@ -25,7 +25,7 @@ from tu_web_linguacheck.languagetool import (
 )
 from tu_web_linguacheck.models import Finding
 from tu_web_linguacheck.project_metadata import load_project_metadata
-from tu_web_linguacheck.report import ReportContext, write_html_report
+from tu_web_linguacheck.report import ReportContext, write_html_report, write_pdf_report
 from tu_web_linguacheck.terminology import find_terminology_matches, load_terminology
 from tu_web_linguacheck.urls import prepare_crawl_url
 
@@ -226,6 +226,9 @@ def check_url(
     report_path: Path | None = typer.Option(
         None, "--report", help="Schreibt einen HTML-Bericht in die angegebene Datei."
     ),
+    pdf_report_path: Path | None = typer.Option(
+        None, "--pdf-report", help="Schreibt einen PDF-Bericht in die angegebene Datei."
+    ),
 ) -> None:
     """Prüft genau eine erlaubte HTML-Seite mit lokalem LanguageTool."""
     config = load_project_config(config_path)
@@ -296,6 +299,19 @@ def check_url(
             ),
         )
         typer.echo(f"HTML-Bericht: {report_path}")
+    if pdf_report_path is not None:
+        write_pdf_report(
+            pdf_report_path,
+            crawled_pages=1,
+            checked_blocks=checked_blocks,
+            findings=findings,
+            context=ReportContext(
+                start_url=prepared_url,
+                profile=config.profile,
+                language=config.check.language,
+            ),
+        )
+        typer.echo(f"PDF-Bericht: {pdf_report_path}")
 
 
 @app.command()

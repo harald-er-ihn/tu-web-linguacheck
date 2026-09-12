@@ -28,10 +28,11 @@ def test_help_explains_single_url_check_arguments() -> None:
     assert "tu-web-linguacheck COMMAND --help" in result.output
 
 
-def test_check_url_writes_html_report(monkeypatch, tmp_path) -> None:
-    """Der Einzelurl-Check schreibt auf Wunsch einen HTML-Bericht."""
+def test_check_url_writes_html_and_pdf_reports(monkeypatch, tmp_path) -> None:
+    """Der Einzelurl-Check schreibt auf Wunsch HTML- und PDF-Berichte."""
     config_path = tmp_path / "config.yaml"
     report_path = tmp_path / "url-report.html"
+    pdf_report_path = tmp_path / "url-report.pdf"
     config = ProjectConfig(
         profile="generic-de",
         crawl=CrawlConfig(
@@ -43,6 +44,7 @@ def test_check_url_writes_html_report(monkeypatch, tmp_path) -> None:
         ),
     )
     written_reports: list[tuple[Path, int, int, list[Finding], ReportContext]] = []
+    written_pdf_reports: list[tuple[Path, int, int, list[Finding], ReportContext]] = []
 
     monkeypatch.setattr(
         "tu_web_linguacheck.cli.load_project_config",
@@ -79,6 +81,18 @@ def test_check_url_writes_html_report(monkeypatch, tmp_path) -> None:
         "tu_web_linguacheck.cli.write_html_report",
         fake_write_html_report,
     )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.write_pdf_report",
+        lambda path, **kwargs: written_pdf_reports.append(
+            (
+                path,
+                kwargs["crawled_pages"],
+                kwargs["checked_blocks"],
+                kwargs["findings"],
+                kwargs["context"],
+            )
+        ),
+    )
 
     result = runner.invoke(
         app,
@@ -88,6 +102,8 @@ def test_check_url_writes_html_report(monkeypatch, tmp_path) -> None:
             str(config_path),
             "--report",
             str(report_path),
+            "--pdf-report",
+            str(pdf_report_path),
         ],
     )
 
@@ -101,7 +117,17 @@ def test_check_url_writes_html_report(monkeypatch, tmp_path) -> None:
             ReportContext("https://example.org/", "generic-de", "de-DE"),
         )
     ]
+    assert written_pdf_reports == [
+        (
+            pdf_report_path,
+            1,
+            1,
+            [],
+            ReportContext("https://example.org/", "generic-de", "de-DE"),
+        )
+    ]
     assert f"HTML-Bericht: {report_path}" in result.output
+    assert f"PDF-Bericht: {pdf_report_path}" in result.output
 
 
 def test_check_url_embeds_report_information(monkeypatch, tmp_path) -> None:
