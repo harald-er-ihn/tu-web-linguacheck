@@ -63,13 +63,12 @@ def _finding_row(finding: Finding) -> str:
     suggestions = _suggestions_text(finding.suggestions)
     message = escape(finding.message)
     source_rule_id = escape(finding.source_rule_id)
-    classification = (
-        f"Kategorie: {escape(finding.category)} · "
-        f"Schweregrad: {escape(finding.severity)}"
+    badges = (
+        f'<span class="finding-badge">{escape(finding.category)}</span>'
+        f'<span class="finding-badge">{escape(finding.severity)}</span>'
     )
     finding_message = (
-        f'<small class="finding-classification">{classification}</small>'
-        f'{message}<small class="finding-rule">Regel: {source_rule_id}</small>'
+        f'{badges}{message}<small class="finding-rule">Regel: {source_rule_id}</small>'
     )
 
     return f"""\
@@ -251,11 +250,15 @@ def _document(
       background: #ffffff;
     }}
     .finding-message {{ width: 36%; }}
-    .finding-classification {{
-      display: block;
-      margin-bottom: 0.25rem;
-      color: #486581;
-      font-size: 0.875rem;
+    .finding-badge {{
+      display: inline-block;
+      margin: 0 0.25rem 0.25rem 0;
+      padding: 0.1rem 0.35rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.2rem;
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 0.75rem;
       font-weight: 700;
     }}
     .finding-rule {{

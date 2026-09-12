@@ -319,7 +319,7 @@ def test_write_html_report_sets_readable_finding_column_widths(tmp_path) -> None
     report_path = tmp_path / "report.html"
     finding = Finding(
         url="https://example.org/",
-        category="grammar",
+        category="grammar<test>",
         severity="warning",
         message="Testmeldung.",
         offset=0,
@@ -352,10 +352,11 @@ def test_write_html_report_sets_readable_finding_column_widths(tmp_path) -> None
     assert '<col class="finding-rule">' not in html
     assert "<th>Regel</th>" not in html
     assert '<small class="finding-rule">Regel: TEST_RULE</small>' in html
-    assert (
-        '<small class="finding-classification">'
-        "Kategorie: grammar · Schweregrad: warning</small>" in html
-    )
+    assert '<span class="finding-badge">grammar&lt;test&gt;</span>' in html
+    assert '<span class="finding-badge">warning</span>' in html
+    assert "finding-classification" not in html
+    assert "Kategorie:" not in html
+    assert "Schweregrad:" not in html
     assert ".finding-category { width:" not in html
     assert ".finding-severity { width:" not in html
     assert ".finding-context { width: 42%; }" in html
