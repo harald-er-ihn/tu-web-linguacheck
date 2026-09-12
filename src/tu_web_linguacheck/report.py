@@ -6,6 +6,7 @@ from html import escape
 from pathlib import Path
 
 from markdown_it import MarkdownIt
+from weasyprint import HTML
 
 from tu_web_linguacheck.models import Finding
 from tu_web_linguacheck.project_metadata import load_project_metadata
@@ -354,3 +355,23 @@ def write_html_report(
         ),
         encoding="utf-8",
     )
+
+
+def write_pdf_report(
+    report_path: Path,
+    *,
+    crawled_pages: int,
+    checked_blocks: int,
+    findings: Sequence[Finding],
+    context: ReportContext,
+) -> None:
+    """Schreibt einen lokalen PDF-Bericht mit Sprachfunden."""
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    HTML(
+        string=_document(
+            crawled_pages=crawled_pages,
+            checked_blocks=checked_blocks,
+            findings=findings,
+            context=context,
+        )
+    ).write_pdf(report_path)

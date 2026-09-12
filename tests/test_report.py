@@ -5,6 +5,7 @@ from tu_web_linguacheck.project_metadata import ProjectMetadata
 from tu_web_linguacheck.report import (
     ReportContext,
     write_html_report,
+    write_pdf_report,
 )
 
 
@@ -374,3 +375,23 @@ def test_write_html_report_sets_readable_finding_column_widths(tmp_path) -> None
     assert ".finding-severity { width:" not in html
     assert ".finding-context { width: 42%; }" in html
     assert "Inhaltsverzeichnis" not in html
+
+
+def test_write_pdf_report_creates_pdf_file(tmp_path) -> None:
+    """Der PDF-Bericht wird als echte lokale PDF-Datei geschrieben."""
+    report_path = tmp_path / "reports" / "crawl-report.pdf"
+
+    write_pdf_report(
+        report_path,
+        crawled_pages=1,
+        checked_blocks=1,
+        findings=[],
+        context=ReportContext(
+            start_url="https://example.org/",
+            profile="generic-de",
+            language="de-DE",
+        ),
+    )
+
+    assert report_path.is_file()
+    assert report_path.read_bytes().startswith(b"%PDF-")
