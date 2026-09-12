@@ -429,6 +429,11 @@ def check_crawl(
         "--report",
         help="Schreibt einen HTML-Bericht in die angegebene Datei.",
     ),
+    pdf_report_path: Path | None = typer.Option(
+        None,
+        "--pdf-report",
+        help="Schreibt einen PDF-Bericht in die angegebene Datei.",
+    ),
 ) -> None:
     """Crawlt erlaubte HTML-Seiten und prüft ihre sichtbaren Texte lokal."""
     config = load_project_config(config_path)
@@ -515,3 +520,17 @@ def check_crawl(
             ),
         )
         typer.echo(f"HTML-Bericht: {report_path}")
+
+    if pdf_report_path is not None:
+        write_pdf_report(
+            pdf_report_path,
+            crawled_pages=len(pages),
+            checked_blocks=checked_blocks,
+            findings=findings,
+            context=ReportContext(
+                start_url=url,
+                profile=config.profile,
+                language=config.check.language,
+            ),
+        )
+        typer.echo(f"PDF-Bericht: {pdf_report_path}")
