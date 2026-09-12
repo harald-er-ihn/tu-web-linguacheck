@@ -374,4 +374,4 @@ def write_pdf_report(
             findings=findings,
             context=context,
         )
-    ).write_pdf(report_path)
+    ).write_pdf(report_path, pdf_variant="pdf/ua-1")

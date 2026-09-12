@@ -1,5 +1,7 @@
 """Tests für lokale HTML-Berichte."""
 
+from unittest.mock import Mock
+
 from tu_web_linguacheck.models import Finding
 from tu_web_linguacheck.project_metadata import ProjectMetadata
 from tu_web_linguacheck.report import (
@@ -395,3 +397,27 @@ def test_write_pdf_report_creates_pdf_file(tmp_path) -> None:
 
     assert report_path.is_file()
     assert report_path.read_bytes().startswith(b"%PDF-")
+
+
+def test_write_pdf_report_requests_pdf_ua_1(monkeypatch, tmp_path) -> None:
+    """Der PDF-Bericht fordert bei WeasyPrint PDF/UA-1 an."""
+    report_path = tmp_path / "report.pdf"
+    fake_html = Mock()
+    monkeypatch.setattr(
+        "tu_web_linguacheck.report.HTML",
+        lambda *, string: fake_html,
+    )
+
+    write_pdf_report(
+        report_path,
+        crawled_pages=1,
+        checked_blocks=1,
+        findings=[],
+        context=ReportContext(
+            start_url="https://example.org/",
+            profile="generic-de",
+            language="de-DE",
+        ),
+    )
+
+    fake_html.write_pdf.assert_called_once_with(report_path, pdf_variant="pdf/ua-1")
