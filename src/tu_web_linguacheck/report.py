@@ -304,6 +304,10 @@ def _document(
       font-size: 0.875rem;
     }}
     pre {{ margin: 0; white-space: pre-wrap; font: inherit; }}
+    @media print {{
+      thead {{ display: table-header-group; }}
+      tbody tr {{ break-inside: avoid; }}
+    }}
     @media (max-width: 48rem) {{
       body {{ padding: 1rem; }}
       .metric-cards {{ grid-template-columns: 1fr; }}

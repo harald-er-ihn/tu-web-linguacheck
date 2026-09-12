@@ -479,3 +479,26 @@ def test_write_pdf_report_requests_pdf_ua_1(monkeypatch, tmp_path) -> None:
     )
 
     fake_html.write_pdf.assert_called_once_with(report_path, pdf_variant="pdf/ua-1")
+
+
+def test_write_html_report_adds_print_rules_for_finding_tables(tmp_path) -> None:
+    """Der HTML-Bericht schützt Fundzeilen und wiederholt Köpfe beim Drucken."""
+    report_path = tmp_path / "report.html"
+
+    write_html_report(
+        report_path,
+        crawled_pages=1,
+        checked_blocks=1,
+        findings=[],
+        context=ReportContext(
+            start_url="https://example.org/",
+            profile="generic-de",
+            language="de-DE",
+        ),
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert "@media print {" in html
+    assert "thead { display: table-header-group; }" in html
+    assert "tbody tr { break-inside: avoid; }" in html
