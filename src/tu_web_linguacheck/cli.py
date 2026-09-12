@@ -37,7 +37,8 @@ app = typer.Typer(
         "  tu-web-linguacheck check-url URL CONFIG_PATH --report DATEI.html\n\n"
         "URL ist die Webadresse. CONFIG_PATH ist eine lokale "
         "YAML-Konfigurationsdatei.\n"
-        "--report DATEI.html erstellt optional einen lokalen HTML-Bericht.\n\n"
+        "--report DATEI.html erstellt optional einen lokalen HTML-Bericht.\n"
+        "--pdf-report DATEI.pdf erstellt optional einen lokalen PDF-Bericht.\n\n"
         "Weitere Argumente und Optionen: tu-web-linguacheck COMMAND --help"
     ),
     no_args_is_help=True,

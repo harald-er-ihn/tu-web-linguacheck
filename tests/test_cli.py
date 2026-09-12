@@ -72,6 +72,17 @@ def test_help_displays_project_name_and_run_command() -> None:
     assert "run" in result.output
 
 
+def test_help_describes_html_and_pdf_reports() -> None:
+    """Die globale Hilfe beschreibt die optionalen lokalen Berichtsformate."""
+    result = runner.invoke(app, ["--help"])
+
+    assert result.exit_code == 0
+    assert "--report DATEI.html" in result.output
+    assert "--pdf-report DATEI.pdf" in result.output
+    assert "HTML-Bericht" in result.output
+    assert "PDF-Bericht" in result.output
+
+
 def test_version_displays_package_version(monkeypatch) -> None:
     """Die CLI gibt ihre Paketversion aus."""
     monkeypatch.setattr(
