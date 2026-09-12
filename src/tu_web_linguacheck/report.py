@@ -25,6 +25,7 @@ class ReportContext:
     start_url: str
     profile: str
     language: str
+    checked_urls: Sequence[str] = ()
 
 
 def _marked_context(finding: Finding) -> str:
@@ -81,13 +82,11 @@ def _finding_row(finding: Finding) -> str:
 
 
 def _finding_table(url: str, url_index: int, findings: Sequence[Finding]) -> str:
-    """Erzeugt eine Fundtabelle mit klickbarer URL-Überschrift."""
+    """Erzeugt einen URL-Abschnitt mit Fundtabelle oder Leerzustand."""
     escaped_url = escape(url, quote=True)
     rows = "\n".join(_finding_row(finding) for finding in findings)
-
-    return f"""\
-  <section class="findings-by-url" id="findings-url-{url_index}">
-    <h2 class="findings-url"><a href="{escaped_url}">{escaped_url}</a></h2>
+    content = (
+        f"""\
     <table>
       <colgroup>
         <col class="finding-message">
@@ -104,14 +103,26 @@ def _finding_table(url: str, url_index: int, findings: Sequence[Finding]) -> str
       <tbody>
 {rows}
       </tbody>
-    </table>
+    </table>"""
+        if findings
+        else '    <p class="empty-state">Keine Sprachfunde festgestellt.</p>'
+    )
+
+    return f"""\
+  <section class="findings-by-url" id="findings-url-{url_index}">
+    <h2 class="findings-url"><a href="{escaped_url}">{escaped_url}</a></h2>
+{content}
   </section>
   <p class="back-to-top"><a href="#report-top">Nach oben</a></p>"""
 
 
-def _finding_sections(findings: Sequence[Finding]) -> tuple[str, str]:
-    """Erzeugt Fundtabellen und bei mehreren URLs ein Inhaltsverzeichnis."""
-    finding_groups: dict[str, list[Finding]] = {}
+def _finding_sections(
+    findings: Sequence[Finding], checked_urls: Sequence[str]
+) -> tuple[str, str]:
+    """Erzeugt URL-Abschnitte und bei mehreren URLs ein Inhaltsverzeichnis."""
+    finding_groups: dict[str, list[Finding]] = {
+        url: [] for url in dict.fromkeys(checked_urls)
+    }
     for finding in findings:
         finding_groups.setdefault(finding.url, []).append(finding)
     grouped_findings = tuple(finding_groups.items())
@@ -149,7 +160,9 @@ def _document(
     context: ReportContext,
 ) -> str:
     """Erzeugt das vollständige HTML-Dokument für den Sprachprüfbericht."""
-    finding_tables, table_of_contents = _finding_sections(findings)
+    finding_tables, table_of_contents = _finding_sections(
+        findings, context.checked_urls
+    )
     report_information = _MARKDOWN_RENDERER.render(
         _REPORT_INFORMATION_PATH.read_text(encoding="utf-8")
     )
@@ -178,9 +191,6 @@ def _document(
             f"<strong>{len(findings)}</strong></div>",
         )
     )
-    escaped_start_url = escape(context.start_url)
-    escaped_profile = escape(context.profile)
-    escaped_language = escape(context.language)
     project_metadata = load_project_metadata()
     project_name_and_version = " ".join(
         (escape(project_metadata.name), escape(project_metadata.version))
@@ -315,9 +325,9 @@ def _document(
   {empty_state}
   <section class="check-context">
     <h2>Prüfkontext</h2>
-    <p>Start-URL: {escaped_start_url}</p>
-    <p>Profil: {escaped_profile}</p>
-    <p>Sprache: {escaped_language}</p>
+    <p>Start-URL: {escape(context.start_url)}</p>
+    <p>Profil: {escape(context.profile)}</p>
+    <p>Sprache: {escape(context.language)}</p>
   </section>
   <h2>Über dieses Werkzeug</h2>
   <p><strong>{project_name_and_version}</strong></p>
@@ -344,7 +354,7 @@ def write_html_report(
     findings: Sequence[Finding],
     context: ReportContext,
 ) -> None:
-    """Schreibt einen lokalen HTML-Bericht mit Sprachfunden."""
+    """Schreibt einen lokalen HTML-Bericht mit geprüften URLs und Sprachfunden."""
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(
         _document(

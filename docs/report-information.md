@@ -9,6 +9,9 @@ Terminologie und Stilregeln.
 
 PDF-Dateien und andere Nicht-HTML-Inhalte werden nicht geprüft.
 
+Das Inhaltsverzeichnis führt alle erfolgreich geprüften Seiten auf. Der Eintrag
+`0 Funde` bedeutet, dass für die Seite keine Sprachfunde festgestellt wurden.
+
 ## Prüfungsergebnisse richtig einordnen
 
 Jeder Fund ist ein Hinweis zur fachlichen Prüfung, keine automatische

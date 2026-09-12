@@ -114,7 +114,12 @@ def test_check_url_writes_html_and_pdf_reports(monkeypatch, tmp_path) -> None:
             1,
             1,
             [],
-            ReportContext("https://example.org/", "generic-de", "de-DE"),
+            ReportContext(
+                "https://example.org/",
+                "generic-de",
+                "de-DE",
+                ("https://example.org/",),
+            ),
         )
     ]
     assert written_pdf_reports == [
@@ -123,7 +128,12 @@ def test_check_url_writes_html_and_pdf_reports(monkeypatch, tmp_path) -> None:
             1,
             1,
             [],
-            ReportContext("https://example.org/", "generic-de", "de-DE"),
+            ReportContext(
+                "https://example.org/",
+                "generic-de",
+                "de-DE",
+                ("https://example.org/",),
+            ),
         )
     ]
     assert f"HTML-Bericht: {report_path}" in result.output
@@ -184,4 +194,10 @@ def test_check_url_embeds_report_information(monkeypatch, tmp_path) -> None:
     assert 'href="#report-information"' in html
     assert '<section id="report-information">' in html
     assert "<h1>Informationen zum Sprachprüfbericht</h1>" in html
+    assert (
+        "Das Inhaltsverzeichnis führt alle erfolgreich geprüften Seiten auf. "
+        "Der Eintrag\n<code>0 Funde</code> bedeutet, dass für die Seite keine "
+        "Sprachfunde "
+        "festgestellt wurden." in html
+    )
     assert 'href="#report-top">Nach oben</a>' in html

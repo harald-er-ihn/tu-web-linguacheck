@@ -238,6 +238,64 @@ def test_write_html_report_shows_escaped_check_context(tmp_path) -> None:
     assert "Sprache: de-DE" in html
 
 
+def test_write_html_report_lists_checked_urls_without_findings(tmp_path) -> None:
+    """Der Bericht führt auch geprüfte URLs ohne Sprachfunde auf."""
+    report_path = tmp_path / "crawl-report.html"
+    finding = Finding(
+        url="https://example.org/mit-fund/",
+        category="grammar",
+        severity="warning",
+        message="Testmeldung.",
+        offset=0,
+        length=4,
+        suggestions=(),
+        context="Testkontext.",
+        profile="generic-de",
+        source_rule_id="TEST_RULE",
+    )
+
+    write_html_report(
+        report_path,
+        crawled_pages=3,
+        checked_blocks=3,
+        findings=[finding],
+        context=ReportContext(
+            start_url="https://example.org/",
+            profile="generic-de",
+            language="de-DE",
+            checked_urls=(
+                "https://example.org/mit-fund/",
+                "https://example.org/ohne-fund/",
+                "https://example.org/ebenfalls-ohne-fund/",
+            ),
+        ),
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert "<h2>Inhaltsverzeichnis</h2>" in html
+    assert (
+        '<a href="#findings-url-1">https://example.org/mit-fund/</a> (1 Fund)' in html
+    )
+    assert (
+        '<a href="#findings-url-2">https://example.org/ohne-fund/</a> (0 Funde)' in html
+    )
+    assert (
+        '<a href="#findings-url-3">https://example.org/ebenfalls-ohne-fund/</a> '
+        "(0 Funde)" in html
+    )
+    assert '<section class="findings-by-url" id="findings-url-2">' in html
+    assert '<section class="findings-by-url" id="findings-url-3">' in html
+    assert (
+        '<section class="findings-by-url" id="findings-url-2">\n'
+        '    <h2 class="findings-url"><a href="https://example.org/ohne-fund/">'
+        "https://example.org/ohne-fund/</a></h2>\n"
+        '    <p class="empty-state">Keine Sprachfunde festgestellt.</p>\n'
+        "  </section>"
+    ) in html
+    assert html.count("<table>") == 1
+
+
 def test_write_html_report_groups_findings_by_url(tmp_path) -> None:
     """Der HTML-Bericht gruppiert Funde in Tabellen unter ihren URLs."""
     report_path = tmp_path / "crawl-report.html"
@@ -376,7 +434,7 @@ def test_write_html_report_sets_readable_finding_column_widths(tmp_path) -> None
     assert ".finding-category { width:" not in html
     assert ".finding-severity { width:" not in html
     assert ".finding-context { width: 42%; }" in html
-    assert "Inhaltsverzeichnis" not in html
+    assert '<section class="table-of-contents">' not in html
 
 
 def test_write_pdf_report_creates_pdf_file(tmp_path) -> None:

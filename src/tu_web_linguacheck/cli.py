@@ -1,6 +1,7 @@
 """Kommandozeilenschnittstelle für tu-web-linguacheck."""
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import typer
@@ -297,6 +298,7 @@ def check_url(
                 start_url=prepared_url,
                 profile=config.profile,
                 language=config.check.language,
+                checked_urls=(prepared_url,),
             ),
         )
         typer.echo(f"HTML-Bericht: {report_path}")
@@ -310,6 +312,7 @@ def check_url(
                 start_url=prepared_url,
                 profile=config.profile,
                 language=config.check.language,
+                checked_urls=(prepared_url,),
             ),
         )
         typer.echo(f"PDF-Bericht: {pdf_report_path}")
@@ -421,6 +424,44 @@ def _check_page_blocks(
     return findings, len(blocks)
 
 
+@dataclass(frozen=True)
+class _ReportData:
+    """Bündelt die gemeinsamen Daten für lokale Berichtsformate."""
+
+    crawled_pages: int
+    checked_blocks: int
+    findings: Sequence[Finding]
+    context: ReportContext
+
+
+def _write_reports(
+    *,
+    report_path: Path | None,
+    pdf_report_path: Path | None,
+    report_data: _ReportData,
+) -> None:
+    """Schreibt angeforderte lokale HTML- und PDF-Berichte."""
+    if report_path is not None:
+        write_html_report(
+            report_path,
+            crawled_pages=report_data.crawled_pages,
+            checked_blocks=report_data.checked_blocks,
+            findings=report_data.findings,
+            context=report_data.context,
+        )
+        typer.echo(f"HTML-Bericht: {report_path}")
+
+    if pdf_report_path is not None:
+        write_pdf_report(
+            pdf_report_path,
+            crawled_pages=report_data.crawled_pages,
+            checked_blocks=report_data.checked_blocks,
+            findings=report_data.findings,
+            context=report_data.context,
+        )
+        typer.echo(f"PDF-Bericht: {pdf_report_path}")
+
+
 @app.command()
 def check_crawl(
     url: str,
@@ -508,30 +549,19 @@ def check_crawl(
     typer.echo(f"Prüfblöcke: {checked_blocks}")
     _display_findings(findings)
 
-    if report_path is not None:
-        write_html_report(
-            report_path,
-            crawled_pages=len(pages),
-            checked_blocks=checked_blocks,
-            findings=findings,
-            context=ReportContext(
-                start_url=url,
-                profile=config.profile,
-                language=config.check.language,
-            ),
-        )
-        typer.echo(f"HTML-Bericht: {report_path}")
-
-    if pdf_report_path is not None:
-        write_pdf_report(
-            pdf_report_path,
-            crawled_pages=len(pages),
-            checked_blocks=checked_blocks,
-            findings=findings,
-            context=ReportContext(
-                start_url=url,
-                profile=config.profile,
-                language=config.check.language,
-            ),
-        )
-        typer.echo(f"PDF-Bericht: {pdf_report_path}")
+    report_data = _ReportData(
+        crawled_pages=len(pages),
+        checked_blocks=checked_blocks,
+        findings=findings,
+        context=ReportContext(
+            start_url=url,
+            profile=config.profile,
+            language=config.check.language,
+            checked_urls=tuple(page.url for page in pages),
+        ),
+    )
+    _write_reports(
+        report_path=report_path,
+        pdf_report_path=pdf_report_path,
+        report_data=report_data,
+    )

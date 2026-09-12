@@ -13,7 +13,7 @@ from tu_web_linguacheck.languagetool import (
     LanguageToolMatch,
     LanguageToolUnavailableError,
 )
-from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.models import CrawledPage, Finding
 from tu_web_linguacheck.project_metadata import ProjectMetadata
 from tu_web_linguacheck.report import ReportContext
 
@@ -971,7 +971,20 @@ def test_check_crawl_writes_html_and_pdf_reports(monkeypatch, tmp_path) -> None:
         return []
 
     def fake_crawl_pages_with_content(**_kwargs):
-        return []
+        return [
+            CrawledPage(
+                url="https://example.org/erste-seite/",
+                depth=0,
+                title="Erste Seite",
+                text="",
+            ),
+            CrawledPage(
+                url="https://example.org/zweite-seite/",
+                depth=1,
+                title="Zweite Seite",
+                text="",
+            ),
+        ]
 
     def fake_write_html_report(
         path: Path,
@@ -1029,19 +1042,35 @@ def test_check_crawl_writes_html_and_pdf_reports(monkeypatch, tmp_path) -> None:
     assert written_reports == [
         (
             report_path,
-            0,
+            2,
             0,
             [],
-            ReportContext("https://example.org/", "generic-de", "de-DE"),
+            ReportContext(
+                "https://example.org/",
+                "generic-de",
+                "de-DE",
+                (
+                    "https://example.org/erste-seite/",
+                    "https://example.org/zweite-seite/",
+                ),
+            ),
         )
     ]
     assert written_pdf_reports == [
         (
             pdf_report_path,
-            0,
+            2,
             0,
             [],
-            ReportContext("https://example.org/", "generic-de", "de-DE"),
+            ReportContext(
+                "https://example.org/",
+                "generic-de",
+                "de-DE",
+                (
+                    "https://example.org/erste-seite/",
+                    "https://example.org/zweite-seite/",
+                ),
+            ),
         )
     ]
 
