@@ -312,6 +312,19 @@ def test_write_html_report_groups_findings_by_url(tmp_path) -> None:
     )
     assert '<section class="findings-by-url" id="findings-url-1">' in html
     assert '<section class="findings-by-url" id="findings-url-2">' in html
+    back_to_top_link = '<p class="back-to-top"><a href="#report-top">Nach oben</a></p>'
+    assert html.count(back_to_top_link) == 2
+    assert html.count('<a href="#report-top">Nach oben</a>') == 3
+    assert (
+        "  </section>\n"
+        f"  {back_to_top_link}\n"
+        '  <section class="findings-by-url" id="findings-url-2">'
+    ) in html
+    assert (
+        f'  </section>\n  {back_to_top_link}\n  <section id="report-information">'
+    ) in html
+    assert '<section id="report-information">' in html
+    assert '<p><a href="#report-top">Nach oben</a></p>' in html
 
 
 def test_write_html_report_sets_readable_finding_column_widths(tmp_path) -> None:

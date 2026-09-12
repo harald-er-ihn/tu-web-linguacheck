@@ -104,7 +104,8 @@ def _finding_table(url: str, url_index: int, findings: Sequence[Finding]) -> str
 {rows}
       </tbody>
     </table>
-  </section>"""
+  </section>
+  <p class="back-to-top"><a href="#report-top">Nach oben</a></p>"""
 
 
 def _finding_sections(findings: Sequence[Finding]) -> tuple[str, str]:
@@ -286,6 +287,10 @@ def _document(
       border: 1px solid #93c5fd;
       border-radius: 0.5rem;
       background: #eff6ff;
+    }}
+    .back-to-top {{
+      margin: 0.75rem 0 1.5rem;
+      font-size: 0.875rem;
     }}
     pre {{ margin: 0; white-space: pre-wrap; font: inherit; }}
     @media (max-width: 48rem) {{
