@@ -51,15 +51,15 @@ def test_write_html_report_creates_clickable_escaped_findings(tmp_path) -> None:
     ) in html
     assert (
         '<div class="metric-card"><p class="metric-label">Gecrawlte Seiten</p>'
-        "<strong>2</strong></div>" in html
+        '<p class="metric-value">2</p></div>' in html
     )
     assert (
         '<div class="metric-card"><p class="metric-label">Prüfblöcke</p>'
-        "<strong>5</strong></div>" in html
+        '<p class="metric-value">5</p></div>' in html
     )
     assert (
         '<div class="metric-card"><p class="metric-label">Sprachfunde</p>'
-        "<strong>1</strong></div>" in html
+        '<p class="metric-value">1</p></div>' in html
     )
     assert ".report-header {" in html
     assert ".metric-cards {\n      display: grid;" in html
@@ -425,9 +425,9 @@ def test_write_html_report_sets_readable_finding_column_widths(tmp_path) -> None
     assert '<col class="finding-context">' in html
     assert '<col class="finding-rule">' not in html
     assert "<th>Regel</th>" not in html
-    assert '<small class="finding-rule">Regel: TEST_RULE</small>' in html
-    assert '<span class="finding-badge">grammar&lt;test&gt;</span>' in html
-    assert '<span class="finding-badge">warning</span>' in html
+    assert '<p class="finding-rule">Regel: TEST_RULE</p>' in html
+    assert '<strong class="finding-badge">warning</strong>' in html
+    assert '<strong class="finding-badge">grammar&lt;test&gt;</strong>' in html
     assert "finding-classification" not in html
     assert "Kategorie:" not in html
     assert "Schweregrad:" not in html

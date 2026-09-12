@@ -66,11 +66,11 @@ def _finding_row(finding: Finding) -> str:
     message = escape(finding.message)
     source_rule_id = escape(finding.source_rule_id)
     badges = (
-        f'<span class="finding-badge">{escape(finding.category)}</span>'
-        f'<span class="finding-badge">{escape(finding.severity)}</span>'
+        f'<strong class="finding-badge">{escape(finding.category)}</strong>'
+        f'<strong class="finding-badge">{escape(finding.severity)}</strong>'
     )
     finding_message = (
-        f'{badges}{message}<small class="finding-rule">Regel: {source_rule_id}</small>'
+        f'{badges}{message}<p class="finding-rule">Regel: {source_rule_id}</p>'
     )
 
     return f"""\
@@ -184,11 +184,11 @@ def _document(
     metric_cards = "\n".join(
         (
             '<div class="metric-card"><p class="metric-label">Gecrawlte Seiten</p>'
-            f"<strong>{crawled_pages}</strong></div>",
+            f"""<p class="metric-value">{crawled_pages}</p></div>""",
             '<div class="metric-card"><p class="metric-label">Prüfblöcke</p>'
-            f"<strong>{checked_blocks}</strong></div>",
+            f"""<p class="metric-value">{checked_blocks}</p></div>""",
             '<div class="metric-card"><p class="metric-label">Sprachfunde</p>'
-            f"<strong>{len(findings)}</strong></div>",
+            f"""<p class="metric-value">{len(findings)}</p></div>""",
         )
     )
     project_metadata = load_project_metadata()
@@ -246,7 +246,10 @@ def _document(
       background: #f8fafc;
     }}
     .metric-label {{ display: block; margin: 0; color: #486581; font-size: 0.875rem; }}
-    .metric-card strong {{ display: block; color: #102a43; font-size: 1.75rem; }}
+    .metric-value {{
+      display: block; margin: 0; color: #102a43; font-size: 1.75rem;
+      font-weight: 700;
+    }}
     .result-status {{
       margin: 0 0 1rem;
       padding: 0.75rem 1rem;
