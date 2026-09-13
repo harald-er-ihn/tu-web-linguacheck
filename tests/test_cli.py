@@ -1075,3 +1075,44 @@ def test_check_crawl_writes_html_and_pdf_reports(monkeypatch, tmp_path) -> None:
     ]
 
     assert f"HTML-Bericht: {report_path}" in result.output
+
+
+def test_check_page_blocks_uses_explicit_html_languages(
+    monkeypatch,
+) -> None:
+    """Explizite HTML-Sprachen werden an LanguageTool weitergegeben."""
+    checked_languages: list[tuple[str, str]] = []
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        checked_languages.append((text, language))
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+
+    findings, checked_blocks = _check_page_blocks(
+        (
+            TextBlock(text="Fallback.", language=None),
+            TextBlock(text="English.", language="en"),
+            TextBlock(text="British English.", language="en-GB"),
+            TextBlock(text="Français.", language="fr"),
+            TextBlock(text="Français de France.", language="fr-FR"),
+            TextBlock(text="Español.", language="es"),
+        ),
+        language="de-DE",
+        url="https://example.org/startseite/",
+        profile="generic-de",
+    )
+
+    assert not findings
+    assert checked_blocks == 6
+    assert checked_languages == [
+        ("Fallback.", "de-DE"),
+        ("English.", "en-US"),
+        ("British English.", "en-GB"),
+        ("Français.", "fr"),
+        ("Français de France.", "fr-FR"),
+        ("Español.", "es"),
+    ]

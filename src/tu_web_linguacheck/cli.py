@@ -409,11 +409,15 @@ def _check_page_blocks(
     block_offset = 0
 
     for block in blocks:
-        is_english = block.language is not None and (
-            block.language.casefold() == "en"
-            or block.language.casefold().startswith("en-")
+        configured_primary_language = language.split("-", maxsplit=1)[0]
+        block_language = (
+            language
+            if block.language is None
+            or block.language.casefold() == configured_primary_language.casefold()
+            else "en-US"
+            if block.language.casefold() == "en"
+            else block.language
         )
-        block_language = "en-US" if is_english else language
         block_findings = _check_text_findings(
             block.text,
             language=block_language,
