@@ -339,7 +339,7 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
         encoding="utf-8",
     )
     config = ProjectConfig(
-        profile="tu-en",
+        profile="tu",
         crawl=CrawlConfig(
             allowed_domains=["example.org"],
             max_depth=1,
@@ -348,8 +348,8 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
             obey_robots_txt=True,
         ),
         check={
-            "language": "en-US",
-            "terminology_path": terminology_path,
+            "language": "de-DE",
+            "english_terminology_path": terminology_path,
         },
     )
     source_url = "https://example.org/de/testseite/"

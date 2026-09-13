@@ -623,8 +623,8 @@ def check_translation(
         typer.echo("URL ist gemäß Crawl-Konfiguration nicht erlaubt.")
         raise typer.Exit(code=1)
 
-    if config.check.terminology_path is None:
-        typer.echo("Für den Übersetzungscheck fehlt terminology_path.")
+    if config.check.english_terminology_path is None:
+        typer.echo("Für den Übersetzungscheck fehlt english_terminology_path.")
         raise typer.Exit(code=1)
 
     german_html = fetch_html(prepared_url, config.crawl.allowed_domains)
@@ -644,7 +644,7 @@ def check_translation(
     english_url = translation_links[0].href
     english_html = fetch_html(english_url, config.crawl.allowed_domains)
     english_content = extract_page_content(english_html)
-    terminology_entries = load_terminology(config.check.terminology_path)
+    terminology_entries = load_terminology(config.check.english_terminology_path)
     findings = [
         finding_from_missing_english_translation(
             match,
