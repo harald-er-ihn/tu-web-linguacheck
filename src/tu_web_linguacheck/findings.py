@@ -67,3 +67,33 @@ def finding_from_terminology_match(
         if profile == "tu-de"
         else "TU_EN_TERMINOLOGY",
     )
+
+
+# pylint: disable=too-many-arguments
+def finding_from_missing_english_translation(
+    match: TerminologyMatch,
+    *,
+    source_url: str,
+    target_url: str,
+    source_context: str,
+    target_context: str | None,
+    profile: str,
+) -> Finding:
+    """Überführt einen fehlenden englischen Zielbegriff in einen Übersetzungsfund."""
+    return Finding(
+        url=target_url,
+        category="terminology",
+        severity="hint",
+        message=(
+            "Die bevorzugte englische Übersetzung fehlt auf der englischen Zielseite."
+        ),
+        offset=match.offset,
+        length=match.length,
+        suggestions=(match.preferred_term,),
+        context=source_context,
+        profile=profile,
+        source_rule_id="TU_EN_MISSING_TRANSLATION",
+        source_url=source_url,
+        source_term=match.matched_text,
+        target_context=target_context,
+    )

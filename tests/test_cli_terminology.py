@@ -4,7 +4,7 @@ from typer.testing import CliRunner
 
 from tu_web_linguacheck.cli import app
 from tu_web_linguacheck.config import CrawlConfig, ProjectConfig
-from tu_web_linguacheck.html_content import PageContent
+from tu_web_linguacheck.html_content import PageContent, TextBlock
 
 runner = CliRunner()
 
@@ -376,11 +376,23 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
             PageContent(
                 title="Deutsch",
                 text="Die Technische Universität Dortmund informiert.",
+                blocks=(
+                    TextBlock(
+                        text="Die Technische Universität Dortmund informiert.",
+                        language="de",
+                    ),
+                ),
             )
             if html == "german-html"
             else PageContent(
                 title="English",
                 text="Dortmund University of Technology provides information.",
+                blocks=(
+                    TextBlock(
+                        text="Dortmund University of Technology provides information.",
+                        language="en",
+                    ),
+                ),
             )
         ),
     )
@@ -407,7 +419,16 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
     assert result.exit_code == 0
     assert f"Englische Übersetzungs-URL: {target_url}" in result.output
     assert "Sprachfunde: 1" in result.output
-    assert "Fundstelle: Technische Universität Dortmund" in result.output
-    assert "Vorschläge: TU Dortmund University" in result.output
+    assert f"URL: {target_url}" in result.output
+    assert (
+        "Meldung: Die bevorzugte englische Übersetzung fehlt auf der "
+        "englischen Zielseite." in result.output
+    )
+    assert "Deutscher Ausgangsbegriff: Technische Universität Dortmund" in result.output
+    assert "Erwartete englische Übersetzung: TU Dortmund University" in result.output
+    assert "Nicht bevorzugte TU-Terminologie" not in result.output
     assert f"PDF-Bericht: {pdf_report_path}" in result.output
     assert written_pdf_reports
+    assert written_pdf_reports[0][1]["findings"][0].target_context == (
+        "Dortmund University of Technology provides information."
+    )

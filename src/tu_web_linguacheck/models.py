@@ -46,11 +46,17 @@ class Finding(BaseModel):
     context: str = Field(min_length=1)
     profile: str = Field(min_length=1)
     source_rule_id: str = Field(min_length=1)
+    source_url: str | None = None
+    source_term: str | None = Field(default=None, min_length=1)
+    target_context: str | None = Field(default=None, min_length=1)
 
-    @field_validator("url")
+    @field_validator("url", "source_url")
     @classmethod
-    def validate_http_url(cls, value: str) -> str:
+    def validate_http_url(cls, value: str | None) -> str | None:
         """Akzeptiert ausschließlich vollständige HTTP(S)-URLs."""
+        if value is None:
+            return value
+
         parsed_url = urlsplit(value)
 
         if parsed_url.scheme not in {"http", "https"} or parsed_url.hostname is None:

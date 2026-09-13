@@ -12,6 +12,7 @@ from tu_web_linguacheck.crawler import crawl_pages_with_content
 from tu_web_linguacheck.findings import (
     filter_ignored_terms,
     finding_from_languagetool_match,
+    finding_from_missing_english_translation,
     finding_from_terminology_match,
 )
 from tu_web_linguacheck.html_content import TextBlock, extract_page_content
@@ -175,8 +176,15 @@ def _display_findings(findings: Sequence[Finding]) -> None:
         typer.echo(f"Meldung: {finding.message}")
         typer.echo(f"Schweregrad: {finding.severity}")
         typer.echo(f"Regel: {finding.source_rule_id}")
-        typer.echo(f"Vorschläge: {', '.join(finding.suggestions) or '-'}")
-        typer.echo(f"Fundstelle: {matched_text}")
+        if finding.source_term is not None:
+            typer.echo(f"Deutscher Ausgangsbegriff: {finding.source_term}")
+            typer.echo(
+                f"Erwartete englische Übersetzung: {', '.join(finding.suggestions)}"
+            )
+            typer.echo(f"Deutsche Quell-URL: {finding.source_url}")
+        else:
+            typer.echo(f"Vorschläge: {', '.join(finding.suggestions) or '-'}")
+            typer.echo(f"Fundstelle: {matched_text}")
         typer.echo(f"Position: {finding.offset}–{end_offset}")
 
         context_start = max(0, finding.offset - 80)
@@ -571,6 +579,23 @@ def check_crawl(
     )
 
 
+def _target_context_for_source_offset(
+    source_blocks: tuple[TextBlock, ...],
+    target_blocks: tuple[TextBlock, ...],
+    source_offset: int,
+) -> str | None:
+    """Liefert den Zielblock an der Position des deutschen Quellblocks."""
+    block_offset = 0
+
+    for index, block in enumerate(source_blocks):
+        block_end = block_offset + len(block.text)
+        if block_offset <= source_offset < block_end:
+            return target_blocks[index].text if index < len(target_blocks) else None
+        block_offset = block_end + 1
+
+    return None
+
+
 @app.command()
 def check_translation(
     url: str,
@@ -617,10 +642,16 @@ def check_translation(
     english_content = extract_page_content(english_html)
     terminology_entries = load_terminology(config.check.terminology_path)
     findings = [
-        finding_from_terminology_match(
+        finding_from_missing_english_translation(
             match,
-            url=prepared_url,
-            context=german_content.text,
+            source_url=prepared_url,
+            target_url=english_url,
+            source_context=german_content.text,
+            target_context=_target_context_for_source_offset(
+                german_content.blocks,
+                english_content.blocks,
+                match.offset,
+            ),
             profile=config.profile,
         )
         for match in find_missing_english_translations(

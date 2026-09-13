@@ -2,6 +2,9 @@
 
 from unittest.mock import Mock
 
+from tu_web_linguacheck.findings import (
+    finding_from_missing_english_translation,
+)
 from tu_web_linguacheck.models import Finding
 from tu_web_linguacheck.project_metadata import ProjectMetadata
 from tu_web_linguacheck.report import (
@@ -9,6 +12,7 @@ from tu_web_linguacheck.report import (
     write_html_report,
     write_pdf_report,
 )
+from tu_web_linguacheck.terminology import TerminologyMatch
 
 
 def test_write_html_report_creates_clickable_escaped_findings(tmp_path) -> None:
@@ -65,7 +69,6 @@ def test_write_html_report_creates_clickable_escaped_findings(tmp_path) -> None:
     assert ".metric-cards {\n      display: grid;" in html
     assert ".result-status--findings {" in html
     assert ".result-status--clear {" in html
-
     assert (
         '<a href="https://example.org/seite/?source=report&amp;lang=de">'
         "https://example.org/seite/?source=report&amp;lang=de</a>"
@@ -502,3 +505,50 @@ def test_write_html_report_adds_print_rules_for_finding_tables(tmp_path) -> None
     assert "@media print {" in html
     assert "thead { display: table-header-group; }" in html
     assert "tbody tr { break-inside: avoid; }" in html
+
+
+def test_write_html_report_shows_source_and_target_context_for_translation(
+    tmp_path,
+) -> None:
+    """Ein Übersetzungsfund zeigt getrennte deutsche und englische Nachweise."""
+    report_path = tmp_path / "translation-report.html"
+    source_url = "https://example.org/de/testseite/"
+    target_url = "https://example.org/en/test-page/"
+    source_term = "Technische Universität Dortmund"
+    source_context = f"Die {source_term} informiert."
+    target_context = "Dortmund University of Technology provides information."
+    finding = finding_from_missing_english_translation(
+        TerminologyMatch(
+            matched_text=source_term,
+            offset=4,
+            length=len(source_term),
+            preferred_term="TU Dortmund University",
+        ),
+        source_url=source_url,
+        target_url=target_url,
+        source_context=source_context,
+        target_context=target_context,
+        profile="tu-en",
+    )
+
+    write_html_report(
+        report_path,
+        crawled_pages=2,
+        checked_blocks=2,
+        findings=[finding],
+        context=ReportContext(
+            start_url=source_url,
+            profile="tu-en",
+            language="de-DE → en-US",
+            checked_urls=(source_url, target_url),
+        ),
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert "Deutscher Quellnachweis" in html
+    assert "Englischer Zieltext" in html
+    assert f"<mark>{source_term}</mark>" in html
+    assert target_context in html
+    assert "<mark>Dortmund University of Technology</mark>" not in html
+    assert "<td>" + chr(92) + "\n" not in html

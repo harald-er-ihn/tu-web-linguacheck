@@ -60,6 +60,20 @@ def _suggestions_text(suggestions: Sequence[str]) -> str:
     return f"{visible_text} … und {remaining_suggestions} {remaining_text}"
 
 
+def _context_evidence(finding: Finding) -> str:
+    """Erzeugt einen sicheren Kontextnachweis für einen Fund."""
+    if finding.target_context is None:
+        return f"<pre>{_marked_context(finding)}</pre>"
+
+    source_url = escape(finding.source_url or "", quote=True)
+    return f"""
+<p><strong>Deutscher Quellnachweis</strong></p>
+<p><a href="{source_url}">{source_url}</a></p>
+<pre>{_marked_context(finding)}</pre>
+<p><strong>Englischer Zieltext</strong></p>
+<pre>{escape(finding.target_context)}</pre>"""
+
+
 def _finding_row(finding: Finding) -> str:
     """Erzeugt eine sicher escapte Tabellenzeile für einen Sprachfund."""
     suggestions = _suggestions_text(finding.suggestions)
@@ -77,7 +91,7 @@ def _finding_row(finding: Finding) -> str:
 <tr>
   <td>{finding_message}</td>
   <td>{escape(suggestions)}</td>
-  <td><pre>{_marked_context(finding)}</pre></td>
+  <td>{_context_evidence(finding)}</td>
 </tr>"""
 
 
