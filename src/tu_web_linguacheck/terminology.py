@@ -11,6 +11,7 @@ class TerminologyEntry:
 
     preferred_english: str
     variants_to_flag: tuple[str, ...]
+    german: str = ""
 
     @property
     def preferred_term(self) -> str:
@@ -26,6 +27,7 @@ def load_terminology(path: Path) -> tuple[TerminologyEntry, ...]:
         TerminologyEntry(
             preferred_english=entry.get("preferred_term") or entry["preferred_english"],
             variants_to_flag=tuple(entry["variants_to_flag"]),
+            german=entry.get("german", ""),
         )
         for entry in payload["entries"]
     )

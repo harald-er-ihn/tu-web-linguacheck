@@ -18,6 +18,7 @@ def test_load_terminology_loads_preferred_terms_and_variants(tmp_path: Path) -> 
   "schema_version": 1,
   "entries": [
     {
+      "german": "Technische Universität Dortmund",
       "preferred_english": "TU Dortmund University",
       "variants_to_flag": [
         "Technical University of Dortmund"
@@ -33,6 +34,7 @@ def test_load_terminology_loads_preferred_terms_and_variants(tmp_path: Path) -> 
 
     assert len(entries) == 1
     assert entries[0].preferred_english == "TU Dortmund University"
+    assert entries[0].german == "Technische Universität Dortmund"
     assert entries[0].variants_to_flag == ("Technical University of Dortmund",)
 
 
