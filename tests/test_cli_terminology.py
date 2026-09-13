@@ -356,6 +356,12 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
     target_url = "https://example.org/en/test-page/"
     written_pdf_reports = []
 
+    checked_languages: list[tuple[str, str]] = []
+
+    def fake_check(_self, *, text: str, language: str) -> list:
+        checked_languages.append((text, language))
+        return []
+
     monkeypatch.setattr(
         "tu_web_linguacheck.cli.load_project_config",
         lambda path: config,
@@ -401,6 +407,10 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
         lambda *_args: [type("Link", (), {"href": target_url, "language": "en"})()],
     )
     monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+    monkeypatch.setattr(
         "tu_web_linguacheck.cli.write_pdf_report",
         lambda path, **kwargs: written_pdf_reports.append((path, kwargs)),
     )
@@ -417,6 +427,10 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
     )
 
     assert result.exit_code == 0
+    assert checked_languages == [
+        ("Die Technische Universität Dortmund informiert.", "de-DE"),
+        ("Dortmund University of Technology provides information.", "en-US"),
+    ]
     assert f"Englische Übersetzungs-URL: {target_url}" in result.output
     assert "Sprachfunde: 1" in result.output
     assert f"URL: {target_url}" in result.output

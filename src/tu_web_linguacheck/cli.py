@@ -7,7 +7,7 @@ from pathlib import Path
 import typer
 from pydantic import ValidationError
 
-from tu_web_linguacheck.config import load_project_config
+from tu_web_linguacheck.config import ProjectConfig, load_project_config
 from tu_web_linguacheck.crawler import crawl_pages_with_content
 from tu_web_linguacheck.findings import (
     filter_ignored_terms,
@@ -15,7 +15,11 @@ from tu_web_linguacheck.findings import (
     finding_from_missing_english_translation,
     finding_from_terminology_match,
 )
-from tu_web_linguacheck.html_content import TextBlock, extract_page_content
+from tu_web_linguacheck.html_content import (
+    PageContent,
+    TextBlock,
+    extract_page_content,
+)
 from tu_web_linguacheck.http import fetch_html
 from tu_web_linguacheck.language_links import (
     find_allowed_page_language_links,
@@ -600,6 +604,37 @@ def _target_context_for_source_offset(
     return None
 
 
+def _check_translation_page_contents(
+    german_content: PageContent,
+    english_content: PageContent,
+    german_url: str,
+    english_url: str,
+    config: ProjectConfig,
+) -> tuple[list[Finding], int]:
+    """Prüft Quell- und Zielseite blockweise mit LanguageTool."""
+    german_findings, german_checked_blocks = _check_page_blocks(
+        german_content.blocks,
+        language=config.check.language,
+        url=german_url,
+        profile=config.profile,
+        disabled_rule_ids=config.check.ignored_rule_ids,
+        ignored_terms=config.check.ignored_terms,
+    )
+    english_findings, english_checked_blocks = _check_page_blocks(
+        english_content.blocks,
+        language=config.check.language,
+        url=english_url,
+        profile=config.profile,
+        disabled_rule_ids=config.check.ignored_rule_ids,
+        ignored_terms=config.check.ignored_terms,
+    )
+
+    return (
+        german_findings + english_findings,
+        german_checked_blocks + english_checked_blocks,
+    )
+
+
 @app.command()
 def check_translation(
     url: str,
@@ -644,8 +679,14 @@ def check_translation(
     english_url = translation_links[0].href
     english_html = fetch_html(english_url, config.crawl.allowed_domains)
     english_content = extract_page_content(english_html)
-    terminology_entries = load_terminology(config.check.english_terminology_path)
-    findings = [
+    language_findings, checked_blocks = _check_translation_page_contents(
+        german_content,
+        english_content,
+        prepared_url,
+        english_url,
+        config,
+    )
+    findings = language_findings + [
         finding_from_missing_english_translation(
             match,
             source_url=prepared_url,
@@ -661,10 +702,9 @@ def check_translation(
         for match in find_missing_english_translations(
             german_content.text,
             english_content.text,
-            terminology_entries,
+            load_terminology(config.check.english_terminology_path),
         )
     ]
-    checked_blocks = len(german_content.blocks) + len(english_content.blocks)
 
     typer.echo(f"Deutsche Quell-URL: {prepared_url}")
     typer.echo(f"Englische Übersetzungs-URL: {english_url}")
