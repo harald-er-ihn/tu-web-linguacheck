@@ -71,3 +71,50 @@ def find_terminology_matches(
                 )
 
     return matches
+
+
+def find_german_terminology_matches(
+    text: str,
+    entries: tuple[TerminologyEntry, ...],
+) -> list[TerminologyMatch]:
+    """Findet deutsche Quellbegriffe mit ihrer bevorzugten englischen Form."""
+    matches: list[TerminologyMatch] = []
+    normalized_text = text.casefold()
+
+    for entry in entries:
+        if not entry.german:
+            continue
+
+        normalized_german = entry.german.casefold()
+        offset = normalized_text.find(normalized_german)
+
+        while offset >= 0:
+            matches.append(
+                TerminologyMatch(
+                    matched_text=text[offset : offset + len(entry.german)],
+                    offset=offset,
+                    length=len(entry.german),
+                    preferred_term=entry.preferred_english,
+                )
+            )
+            offset = normalized_text.find(
+                normalized_german,
+                offset + len(normalized_german),
+            )
+
+    return matches
+
+
+def find_missing_english_translations(
+    german_text: str,
+    english_text: str,
+    entries: tuple[TerminologyEntry, ...],
+) -> list[TerminologyMatch]:
+    """Findet deutsche Begriffe, deren bevorzugtes Englisch im Zieltext fehlt."""
+    english_text_casefolded = english_text.casefold()
+
+    return [
+        match
+        for match in find_german_terminology_matches(german_text, entries)
+        if match.preferred_term.casefold() not in english_text_casefolded
+    ]

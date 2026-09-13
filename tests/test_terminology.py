@@ -4,6 +4,8 @@ from pathlib import Path
 
 from tu_web_linguacheck.terminology import (
     TerminologyEntry,
+    find_german_terminology_matches,
+    find_missing_english_translations,
     find_terminology_matches,
     load_terminology,
 )
@@ -102,3 +104,50 @@ def test_load_terminology_loads_language_neutral_preferred_terms(
     assert len(entries) == 1
     assert entries[0].preferred_term == "Lehrkräfte"
     assert entries[0].variants_to_flag == ("Lehrer",)
+
+
+def test_find_german_terminology_matches_finds_source_terms() -> None:
+    """Die Suche findet deutsche Quellbegriffe mit gewünschter englischer Form."""
+    entries = (
+        TerminologyEntry(
+            preferred_english="Office for Diversity and Equal Opportunities",
+            variants_to_flag=(),
+            german="Stabsstelle Chancengleichheit, Familie und Vielfalt",
+        ),
+    )
+
+    matches = find_german_terminology_matches(
+        "Die Stabsstelle Chancengleichheit, Familie und Vielfalt berät Beschäftigte.",
+        entries,
+    )
+
+    assert len(matches) == 1
+    assert (
+        matches[0].matched_text == "Stabsstelle Chancengleichheit, Familie und Vielfalt"
+    )
+    assert matches[0].offset == 4
+    assert matches[0].length == 51
+    assert matches[0].preferred_term == "Office for Diversity and Equal Opportunities"
+
+
+def test_find_missing_english_translations_reports_missing_preferred_term() -> None:
+    """Ein deutscher Quellbegriff wird gemeldet, wenn sein Englischziel fehlt."""
+    entries = (
+        TerminologyEntry(
+            german="Technische Universität Dortmund",
+            preferred_english="TU Dortmund University",
+            variants_to_flag=(),
+        ),
+    )
+
+    matches = find_missing_english_translations(
+        "Die Technische Universität Dortmund informiert Studieninteressierte.",
+        "Dortmund University of Technology provides prospective students.",
+        entries,
+    )
+
+    assert len(matches) == 1
+    assert matches[0].matched_text == "Technische Universität Dortmund"
+    assert matches[0].offset == 4
+    assert matches[0].length == 31
+    assert matches[0].preferred_term == "TU Dortmund University"
