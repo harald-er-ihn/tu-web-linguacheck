@@ -27,7 +27,11 @@ from tu_web_linguacheck.languagetool import (
 from tu_web_linguacheck.models import Finding
 from tu_web_linguacheck.project_metadata import load_project_metadata
 from tu_web_linguacheck.report import ReportContext, write_html_report, write_pdf_report
-from tu_web_linguacheck.terminology import find_terminology_matches, load_terminology
+from tu_web_linguacheck.terminology import (
+    find_missing_english_translations,
+    find_terminology_matches,
+    load_terminology,
+)
 from tu_web_linguacheck.urls import prepare_crawl_url
 
 app = typer.Typer(
@@ -564,4 +568,86 @@ def check_crawl(
         report_path=report_path,
         pdf_report_path=pdf_report_path,
         report_data=report_data,
+    )
+
+
+@app.command()
+def check_translation(
+    url: str,
+    config_path: Path,
+    report_path: Path | None = typer.Option(
+        None,
+        "--report",
+        help="Schreibt einen HTML-Bericht in die angegebene Datei.",
+    ),
+    pdf_report_path: Path | None = typer.Option(
+        None,
+        "--pdf-report",
+        help="Schreibt einen PDF-Bericht in die angegebene Datei.",
+    ),
+) -> None:
+    """Prüft deutsche Begriffe gegen die englische Sprachversion einer Seite."""
+    config = load_project_config(config_path)
+    prepared_url = prepare_crawl_url(url, config.crawl)
+
+    if prepared_url is None:
+        typer.echo("URL ist gemäß Crawl-Konfiguration nicht erlaubt.")
+        raise typer.Exit(code=1)
+
+    if config.check.terminology_path is None:
+        typer.echo("Für den Übersetzungscheck fehlt terminology_path.")
+        raise typer.Exit(code=1)
+
+    german_html = fetch_html(prepared_url, config.crawl.allowed_domains)
+    german_content = extract_page_content(german_html)
+    translation_links = find_translation_links(
+        find_allowed_page_language_links(
+            prepared_url,
+            german_html,
+            config.crawl.allowed_domains,
+        ),
+        "de",
+    )
+    if not translation_links:
+        typer.echo("Keine erlaubte englische Übersetzungs-URL gefunden.")
+        raise typer.Exit(code=1)
+
+    english_url = translation_links[0].href
+    english_html = fetch_html(english_url, config.crawl.allowed_domains)
+    english_content = extract_page_content(english_html)
+    terminology_entries = load_terminology(config.check.terminology_path)
+    findings = [
+        finding_from_terminology_match(
+            match,
+            url=prepared_url,
+            context=german_content.text,
+            profile=config.profile,
+        )
+        for match in find_missing_english_translations(
+            german_content.text,
+            english_content.text,
+            terminology_entries,
+        )
+    ]
+    checked_blocks = len(german_content.blocks) + len(english_content.blocks)
+
+    typer.echo(f"Deutsche Quell-URL: {prepared_url}")
+    typer.echo(f"Englische Übersetzungs-URL: {english_url}")
+    typer.echo(f"Prüfblöcke: {checked_blocks}")
+    _display_findings(findings)
+
+    _write_reports(
+        report_path=report_path,
+        pdf_report_path=pdf_report_path,
+        report_data=_ReportData(
+            crawled_pages=2,
+            checked_blocks=checked_blocks,
+            findings=findings,
+            context=ReportContext(
+                start_url=prepared_url,
+                profile=config.profile,
+                language="de-DE → en-US",
+                checked_urls=(prepared_url, english_url),
+            ),
+        ),
     )
