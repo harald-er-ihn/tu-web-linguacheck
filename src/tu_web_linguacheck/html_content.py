@@ -3,7 +3,7 @@
 import re
 from dataclasses import dataclass
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, NavigableString, Tag
 
 _BLOCK_TAGS = [
     "h1",
@@ -39,11 +39,16 @@ class PageContent:
     blocks: tuple[TextBlock, ...] = ()
 
 
-def _normalize_block_text(block: Tag) -> str:
-    """Extrahiert und normalisiert den sichtbaren Text eines HTML-Blocks."""
-    text = block.get_text(" ", strip=True)
+def _normalize_text(text: str) -> str:
+    """Normalisiert Leerraum und Leerzeichen vor Satzzeichen."""
+    text = " ".join(text.split())
 
     return re.sub(r"\s+([,.;:!?])", r"\1", text)
+
+
+def _normalize_block_text(block: Tag) -> str:
+    """Extrahiert und normalisiert den sichtbaren Text eines HTML-Blocks."""
+    return _normalize_text(block.get_text(" ", strip=True))
 
 
 def _get_html_language(block: Tag) -> str | None:
@@ -59,6 +64,44 @@ def _get_html_language(block: Tag) -> str | None:
     return None
 
 
+def _extract_block_segments(block: Tag) -> tuple[TextBlock, ...]:
+    """Teilt einen Block an seinen effektiven HTML-Sprachwechseln auf."""
+    segments: list[TextBlock] = []
+
+    def append_text(text: str, language: str | None) -> None:
+        normalized_text = _normalize_text(text)
+
+        if not normalized_text:
+            return
+
+        if segments and segments[-1].language == language:
+            previous = segments[-1]
+            segments[-1] = TextBlock(
+                text=_normalize_text(f"{previous.text} {normalized_text}"),
+                language=language,
+            )
+            return
+
+        segments.append(TextBlock(text=normalized_text, language=language))
+
+    def visit(element: Tag, language: str | None) -> None:
+        for child in element.children:
+            if isinstance(child, NavigableString):
+                append_text(str(child), language)
+            elif isinstance(child, Tag):
+                child_language = child.get("lang")
+                effective_language = (
+                    child_language
+                    if isinstance(child_language, str) and child_language
+                    else language
+                )
+                visit(child, effective_language)
+
+    visit(block, _get_html_language(block))
+
+    return tuple(segments)
+
+
 def _extract_visible_blocks(
     content_element: Tag | BeautifulSoup,
 ) -> tuple[TextBlock, ...]:
@@ -70,9 +113,7 @@ def _extract_visible_blocks(
     ]
 
     return tuple(
-        TextBlock(text=text, language=_get_html_language(block))
-        for block in blocks
-        if (text := _normalize_block_text(block))
+        segment for block in blocks for segment in _extract_block_segments(block)
     )
 
 

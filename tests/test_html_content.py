@@ -109,3 +109,24 @@ def test_extracts_visible_blocks_with_inherited_html_language() -> None:
         ("English", "en"),
         ("English text.", "en"),
     ]
+
+
+def test_splits_inline_content_at_language_changes_for_any_element() -> None:
+    """Jedes verschachtelte Element mit abweichender Sprache trennt Prüfblöcke."""
+    html = """
+    <html lang="de">
+      <body>
+        <main>
+          <p>Deutscher Text mit <x-english lang="en">an englsh word</x-english>.</p>
+        </main>
+      </body>
+    </html>
+    """
+
+    content = extract_page_content(html)
+
+    assert [(block.text, block.language) for block in content.blocks] == [
+        ("Deutscher Text mit", "de"),
+        ("an englsh word", "en"),
+        (".", "de"),
+    ]
