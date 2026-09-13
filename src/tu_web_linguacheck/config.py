@@ -31,6 +31,8 @@ class CheckConfig(BaseModel):
     ignored_rule_ids: list[str] = Field(default_factory=list)
     ignored_terms: list[str] = Field(default_factory=list)
     terminology_path: Path | None = None
+    german_terminology_path: Path | None = None
+    english_terminology_path: Path | None = None
 
 
 class ProjectConfig(BaseModel):
