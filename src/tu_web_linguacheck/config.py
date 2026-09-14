@@ -50,8 +50,17 @@ def load_project_config(path: Path) -> ProjectConfig:
     config_data = yaml.safe_load(path.read_text(encoding="utf-8"))
 
     config = ProjectConfig.model_validate(config_data)
-    terminology_path = config.check.terminology_path
-    if terminology_path is not None and not terminology_path.is_absolute():
-        config.check.terminology_path = (path.parent / terminology_path).resolve()
+    for terminology_path_name in (
+        "terminology_path",
+        "german_terminology_path",
+        "english_terminology_path",
+    ):
+        terminology_path = getattr(config.check, terminology_path_name)
+        if terminology_path is not None and not terminology_path.is_absolute():
+            setattr(
+                config.check,
+                terminology_path_name,
+                (path.parent / terminology_path).resolve(),
+            )
 
     return config

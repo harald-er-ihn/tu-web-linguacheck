@@ -291,3 +291,37 @@ def test_check_config_accepts_german_and_english_terminology_paths() -> None:
     assert config.check.english_terminology_path == Path(
         "data/tu-terminology.local.json"
     )
+
+
+def test_load_project_config_resolves_relative_tu_terminology_paths(
+    tmp_path: Path,
+) -> None:
+    """Getrennte relative TU-Terminologiepfade werden zum YAML-Verzeichnis aufgelöst."""
+    config_directory = tmp_path / "config"
+    config_directory.mkdir()
+    config_path = config_directory / "tu.local.yaml"
+    config_path.write_text(
+        """\
+profile: tu
+crawl:
+  allowed_domains:
+    - example.org
+  max_depth: 1
+  max_pages: 10
+  requests_per_second: 1.0
+  obey_robots_txt: true
+check:
+  german_terminology_path: ../data/tu-de-terminology.local.json
+  english_terminology_path: ../data/tu-terminology.local.json
+""",
+        encoding="utf-8",
+    )
+
+    config = load_project_config(config_path)
+
+    assert config.check.german_terminology_path == (
+        tmp_path / "data/tu-de-terminology.local.json"
+    )
+    assert config.check.english_terminology_path == (
+        tmp_path / "data/tu-terminology.local.json"
+    )
