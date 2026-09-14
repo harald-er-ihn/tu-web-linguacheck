@@ -444,6 +444,40 @@ def _check_page_blocks(
     return findings, len(blocks)
 
 
+def _find_terminology_in_language_blocks(
+    blocks: tuple[TextBlock, ...],
+    *,
+    terminology_entries: tuple,
+    language: str,
+    url: str,
+    profile: str,
+) -> list[Finding]:
+    """Findet Terminologie nur in Blöcken der angegebenen Primärsprache."""
+    findings: list[Finding] = []
+    context = "\n".join(block.text for block in blocks)
+    block_offset = 0
+
+    for block in blocks:
+        block_primary_language = (
+            block.language.split("-", maxsplit=1)[0].casefold()
+            if block.language is not None
+            else None
+        )
+        if block_primary_language == language:
+            findings.extend(
+                finding_from_terminology_match(
+                    match,
+                    url=url,
+                    context=context,
+                    profile=profile,
+                ).model_copy(update={"offset": match.offset + block_offset})
+                for match in find_terminology_matches(block.text, terminology_entries)
+            )
+        block_offset += len(block.text) + 1
+
+    return findings
+
+
 @dataclass(frozen=True)
 class _ReportData:
     """Bündelt die gemeinsamen Daten für lokale Berichtsformate."""
@@ -629,8 +663,44 @@ def _check_translation_page_contents(
         ignored_terms=config.check.ignored_terms,
     )
 
+    terminology_findings: list[Finding] = []
+    if config.check.german_terminology_path is not None:
+        german_terminology_entries = load_terminology(
+            config.check.german_terminology_path
+        )
+        for content, url in (
+            (german_content, german_url),
+            (english_content, english_url),
+        ):
+            terminology_findings.extend(
+                _find_terminology_in_language_blocks(
+                    content.blocks,
+                    terminology_entries=german_terminology_entries,
+                    language="de",
+                    url=url,
+                    profile="tu-de",
+                )
+            )
+    if config.check.english_terminology_path is not None:
+        english_terminology_entries = load_terminology(
+            config.check.english_terminology_path
+        )
+        for content, url in (
+            (german_content, german_url),
+            (english_content, english_url),
+        ):
+            terminology_findings.extend(
+                _find_terminology_in_language_blocks(
+                    content.blocks,
+                    terminology_entries=english_terminology_entries,
+                    language="en",
+                    url=url,
+                    profile="tu-en",
+                )
+            )
+
     return (
-        german_findings + english_findings,
+        german_findings + english_findings + terminology_findings,
         german_checked_blocks + english_checked_blocks,
     )
 

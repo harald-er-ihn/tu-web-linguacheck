@@ -446,3 +446,115 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
     assert written_pdf_reports[0][1]["findings"][0].target_context == (
         "Dortmund University of Technology provides information."
     )
+
+
+def test_check_translation_applies_tu_terminology_only_to_matching_languages(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Der Übersetzungscheck prüft TU-Terminologie nur in passenden Sprachblöcken."""
+    config_path = tmp_path / "config.yaml"
+    german_terminology_path = tmp_path / "tu-de-terminology.local.json"
+    english_terminology_path = tmp_path / "tu-terminology.local.json"
+    german_terminology_path.write_text(
+        """\
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "preferred_term": "Lehrkräfte",
+      "variants_to_flag": ["Lehrer"]
+    }
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+    english_terminology_path.write_text(
+        """\
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "german": "Universität",
+      "preferred_english": "TU Dortmund University",
+      "variants_to_flag": ["Technical University of Dortmund"]
+    }
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+    config = ProjectConfig(
+        profile="tu",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=1,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+        check={
+            "language": "de-DE",
+            "german_terminology_path": german_terminology_path,
+            "english_terminology_path": english_terminology_path,
+        },
+    )
+    source_url = "https://example.org/de/testseite/"
+    target_url = "https://example.org/en/test-page/"
+    page_content = PageContent(
+        title="Testseite",
+        text=(
+            "Die Lehrer informieren über die Technical University of Dortmund.\n"
+            "The Technical University of Dortmund mentions Lehrer."
+        ),
+        blocks=(
+            TextBlock(
+                text=(
+                    "Die Lehrer informieren über die Technical University of Dortmund."
+                ),
+                language="de",
+            ),
+            TextBlock(
+                text="The Technical University of Dortmund mentions Lehrer.",
+                language="en",
+            ),
+        ),
+    )
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda _path: config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.prepare_crawl_url",
+        lambda url, _crawl_config: url,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        lambda url, _allowed_domains: (
+            "german-html" if url == source_url else "english-html"
+        ),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.extract_page_content",
+        lambda _html: page_content,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.find_allowed_page_language_links",
+        lambda *_args: [type("Link", (), {"href": target_url, "language": "en"})()],
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        lambda _self, *, text, language: [],
+    )
+
+    result = runner.invoke(
+        app,
+        ["check-translation", source_url, str(config_path)],
+    )
+
+    assert result.exit_code == 0
+    assert "Sprachfunde: 4" in result.output
+    assert result.output.count("Regel: TU_DE_INCLUSIVE_LANGUAGE") == 2
+    assert result.output.count("Regel: TU_EN_TERMINOLOGY") == 2
