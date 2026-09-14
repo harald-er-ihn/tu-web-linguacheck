@@ -325,3 +325,19 @@ check:
     assert config.check.english_terminology_path == (
         tmp_path / "data/tu-terminology.local.json"
     )
+
+
+def test_combined_example_configuration_is_valid_and_uses_relative_paths() -> None:
+    """Die kombinierte öffentliche Vorlage nutzt relative TU-Terminologiepfade."""
+    project_root = Path(__file__).resolve().parents[1]
+
+    config = load_project_config(project_root / "config/combined.example.yaml")
+
+    assert config.profile == "tu"
+    assert config.check.language == "de-DE"
+    assert config.check.german_terminology_path == (
+        project_root / "data/tu-de-terminology.local.json"
+    )
+    assert config.check.english_terminology_path == (
+        project_root / "data/tu-terminology.local.json"
+    )

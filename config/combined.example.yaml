@@ -1,0 +1,36 @@
+# Kombinierte Beispielkonfiguration für sprachsegmentierte TU-Websites.
+#
+# Für die lokale Nutzung kopiere diese Datei beispielsweise nach
+# config/meine-seite.local.yaml und passe Domain sowie Ausnahmen an.
+
+profile: tu
+
+crawl:
+  allowed_domains:
+    - example.org
+  max_depth: 1
+  max_pages: 10
+  requests_per_second: 1.0
+  obey_robots_txt: true
+  strip_fragments: true
+  tracking_parameters:
+    - fbclid
+    - gclid
+    - mc_cid
+    - mc_eid
+    - utm_campaign
+    - utm_content
+    - utm_medium
+    - utm_source
+    - utm_term
+  exclude_patterns:
+    - '\.(?:7z|avi|bmp|csv|docx?|gz|ico|jpe?g|mov|mp3|mp4|pdf|png|pptx?|rar|svg|tar|tgz|webp|xlsx?|zip)(?:$|[?#])'
+    - '/wp-admin(?:/|$)'
+    - '/wp-login\.php(?:$|[?#])'
+
+check:
+  language: de-DE
+  german_terminology_path: ../data/tu-de-terminology.local.json
+  english_terminology_path: ../data/tu-terminology.local.json
+  ignored_rule_ids: []
+  ignored_terms: []

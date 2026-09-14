@@ -3,6 +3,8 @@
 Dieses Verzeichnis enthält YAML-Konfigurationen für `tu-web-linguacheck`.
 
 - `example.yaml` ist eine versionierte Vorlage.
+- `combined.example.yaml` ist eine versionierte Vorlage für kombinierte
+  deutsch- und englischsprachige TU-Prüfungen.
 - Dateien mit dem Namen `*.local.yaml` sowie `local.yaml` sind für lokale
   Konfigurationen vorgesehen und werden von Git ignoriert.
 - Lokale Konfigurationen dürfen domainspezifische Einstellungen und
@@ -52,6 +54,8 @@ Das Profil legt den Regelbestand fest:
 - `generic-de`: allgemeine deutsche Prüfung.
 - `tu-de`: deutsche Prüfung mit TU-Dortmund-Regeln.
 - `tu-en`: englische Prüfung mit TU-Dortmund-Regeln.
+- `tu`: kombinierte Prüfung deutscher und englischer Textsegmente mit
+  getrennten TU-Terminologiepfaden.
 
 ## Bereich `crawl`
 
@@ -121,7 +125,9 @@ internen HTML-Links gemäß `max_depth` und `max_pages`.
 | `language` | LanguageTool-Sprache, etwa `de-DE` oder `en-US`. |
 | `ignored_rule_ids` | Regel-IDs, deren Funde nicht berichtet werden. |
 | `ignored_terms` | Begriffe, die nicht als Rechtschreibfund berichtet werden. |
-| `terminology_path` | Optionaler lokaler Terminologiepfad für TU-Profile. |
+| `terminology_path` | Einzelner lokaler Pfad für `tu-de` oder `tu-en`. |
+| `german_terminology_path` | Deutscher TU-Pfad für das Profil `tu`. |
+| `english_terminology_path` | Englischer TU-Pfad für `tu` und Übersetzungen. |
 
 Mit `ignored_rule_ids` lassen sich bekannte, für das Projekt nicht relevante
 Regeln ausblenden:
@@ -143,11 +149,21 @@ check:
 
 ### Lokale TU-Terminologie
 
-Die Profile `tu-de` und `tu-en` können zusätzlich eine lokale
-Terminologiedatei verwenden. Sie bleibt außerhalb des öffentlichen
-Repositorys und wird nur für Terminologievarianten geprüft. Relative Pfade
-werden gegen das Verzeichnis der Konfigurationsdatei aufgelöst; das ist für
-Linux und WSL portabel.
+Die Profile `tu-de` und `tu-en` können zusätzlich eine einzelne lokale
+Terminologiedatei verwenden. Das kombinierte Profil `tu` verwendet getrennte
+Pfade für deutsche und englische TU-Terminologie. Die Dateien bleiben außerhalb
+des öffentlichen Repositorys. Relative Pfade werden gegen das Verzeichnis der
+Konfigurationsdatei aufgelöst; das ist für Linux und WSL portabel.
+
+```yaml
+profile: tu
+
+check:
+  german_terminology_path: ../data/tu-de-terminology.local.json
+  english_terminology_path: ../data/tu-terminology.local.json
+```
+
+Für einsprachige Prüfungen bleibt der ältere einzelne Pfad verfügbar:
 
 ```yaml
 check:
