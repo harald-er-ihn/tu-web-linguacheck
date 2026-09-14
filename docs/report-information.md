@@ -31,6 +31,24 @@ Unterstützung und müssen nicht übernommen werden.
   Terminologie- und Stilregeln.
 - `tu-en` prüft englischsprachige TU-Dortmund-Websites mit `en-US` sowie
   ergänzender Terminologie und Stilregeln.
+- `tu` kombiniert die deutsche und englische TU-Terminologieprüfung für
+  sprachsegmentierte Websites.
+
+## Sprachprüfwerkzeug und Sprachen
+
+Für Rechtschreibung, Grammatik und Zeichensetzung nutzt das Werkzeug einen
+lokal betriebenen [LanguageTool](https://languagetool.org/)-Server. Die
+Regelmenge richtet sich nach der effektiven HTML-Sprache eines Textsegments:
+
+- Ohne `lang` gilt die in der Konfiguration angegebene Fallbacksprache, zum
+  Beispiel `de-DE`.
+- `lang="de"` wird mit der konfigurierten deutschen Sprachvariante geprüft.
+- `lang="en"` wird mit `en-US` geprüft.
+- Explizite Varianten wie `lang="en-GB"` sowie weitere Sprachen wie `fr` oder
+  `es` werden entsprechend an LanguageTool übergeben.
+
+Lokale TU-Terminologie wird derzeit nur für deutsche und englische Segmente
+geprüft.
 
 ## Datenschutz und lokale Verarbeitung
 
