@@ -12,6 +12,14 @@ Dieses Verzeichnis enthält YAML-Konfigurationen für `tu-web-linguacheck`.
 - Für TU-weite lokale Prüfungen sind `tu-de.local.yaml` und
   `tu-en.local.yaml` als profilbezogene Namen empfohlen.
 
+## Kombinierte Vorlage
+
+Lege eine lokale kombinierte Konfiguration so an:
+
+```bash
+cp config/combined.example.yaml config/combined.local.yaml
+```
+
 Eine Konfiguration wird vor der Nutzung validiert:
 
 ```bash
