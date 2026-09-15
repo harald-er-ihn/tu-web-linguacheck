@@ -645,24 +645,7 @@ def _check_translation_page_contents(
     english_url: str,
     config: ProjectConfig,
 ) -> tuple[list[Finding], int]:
-    """Prüft Quell- und Zielseite blockweise mit LanguageTool."""
-    german_findings, german_checked_blocks = _check_page_blocks(
-        german_content.blocks,
-        language=config.check.language,
-        url=german_url,
-        profile=config.profile,
-        disabled_rule_ids=config.check.ignored_rule_ids,
-        ignored_terms=config.check.ignored_terms,
-    )
-    english_findings, english_checked_blocks = _check_page_blocks(
-        english_content.blocks,
-        language=config.check.language,
-        url=english_url,
-        profile=config.profile,
-        disabled_rule_ids=config.check.ignored_rule_ids,
-        ignored_terms=config.check.ignored_terms,
-    )
-
+    """Prüft Quell- und Zielseite auf TU-Terminologie."""
     terminology_findings: list[Finding] = []
     if config.check.german_terminology_path is not None:
         german_terminology_entries = load_terminology(
@@ -699,10 +682,7 @@ def _check_translation_page_contents(
                 )
             )
 
-    return (
-        german_findings + english_findings + terminology_findings,
-        german_checked_blocks + english_checked_blocks,
-    )
+    return terminology_findings, 0
 
 
 @app.command()

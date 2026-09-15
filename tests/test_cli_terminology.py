@@ -427,10 +427,7 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
     )
 
     assert result.exit_code == 0
-    assert checked_languages == [
-        ("Die Technische Universität Dortmund informiert.", "de-DE"),
-        ("Dortmund University of Technology provides information.", "en-US"),
-    ]
+    assert not checked_languages
     assert f"Englische Übersetzungs-URL: {target_url}" in result.output
     assert "Sprachfunde: 1" in result.output
     assert f"URL: {target_url}" in result.output
