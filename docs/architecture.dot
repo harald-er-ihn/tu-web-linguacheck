@@ -90,14 +90,14 @@ digraph tu_web_linguacheck_architecture {
     ];
 
     reports [
-        label="Spätere lokale Berichte",
+        label="Lokale HTML- und PDF-Berichte",
         fillcolor="#555555",
         fontcolor="white",
         shape="note"
     ];
 
     cli -> config;
-    cli -> crawler [label="späterer Crawl-Befehl"];
+    cli -> crawler [label="check-crawl"];
     cli -> http [label="check-url"];
     cli -> languagetool [label="check-text"];
 
