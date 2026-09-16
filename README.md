@@ -58,7 +58,7 @@ Sicherheitsgrenzen und lokalen Berichtswege.
 Die bearbeitbare Diagrammquelle liegt in `docs/architecture.dot`. Das SVG wird
 lokal mit `tools/generate_architecture_diagram.sh` erzeugt.
 
-## Geplante Prüfprofile
+## Prüfprofile
 
 - `generic-de`: Deutsche private Websites: Rechtschreibung, Grammatik,
   Zeichensetzung und ungewöhnliche Wörter.
@@ -66,6 +66,8 @@ lokal mit `tools/generate_architecture_diagram.sh` erzeugt.
   Terminologie- und Stilregeln.
 - `tu-en`: Englische TU-Dortmund-Websites: LanguageTool mit `en-US`,
   TU-Terminologie und englische Stilregeln.
+- `tu`: Kombinierte deutsch- und englischsprachige TU-Prüfungen mit
+  getrennter deutscher und englischer Terminologie.
 
 ## Geplanter Technologiestack
 
