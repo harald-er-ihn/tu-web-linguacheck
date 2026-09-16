@@ -12,6 +12,12 @@ PDF-Dateien und andere Nicht-HTML-Inhalte werden nicht geprüft.
 Das Inhaltsverzeichnis führt alle erfolgreich geprüften Seiten auf. Der Eintrag
 `0 Funde` bedeutet, dass für die Seite keine Sprachfunde festgestellt wurden.
 
+## Berichtsausgaben
+
+Die Prüfung kann einen lokalen HTML-Bericht oder einen lokalen PDF/UA-1-Bericht
+erzeugen. Beide Berichtsausgaben enthalten die geprüften Seiten und die
+festgestellten Sprachfunde.
+
 ## Prüfungsergebnisse richtig einordnen
 
 Jeder Fund ist ein Hinweis zur fachlichen Prüfung, keine automatische
