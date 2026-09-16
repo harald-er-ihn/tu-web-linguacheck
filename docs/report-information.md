@@ -29,6 +29,11 @@ Prüfe deshalb den jeweiligen Fundkontext und entscheide anschließend, ob eine
 Änderung angemessen ist. Die Vorschläge des Sprachprüfwerkszeugs dienen als
 Unterstützung und müssen nicht übernommen werden.
 
+Der Bericht zeigt für jeden Fund bis zu 80 Zeichen vor und nach der Fundstelle.
+Die Fundstelle selbst ist im HTML-Bericht hervorgehoben. Dadurch bleibt der
+Kontext für die Bewertung nachvollziehbar, ohne den vollständigen Seitentext zu
+wiederholen.
+
 ## Prüfprofile
 
 - `generic-de` prüft deutschsprachige Websites auf Rechtschreibung,
