@@ -745,6 +745,9 @@ def check_translation(
     findings = language_findings + [
         finding_from_missing_english_translation(
             match,
+            occurrence_count=german_content.text.casefold().count(
+                match.matched_text.casefold()
+            ),
             source_url=prepared_url,
             target_url=english_url,
             source_context=german_content.text,

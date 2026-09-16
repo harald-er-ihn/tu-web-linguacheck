@@ -524,6 +524,7 @@ def test_write_html_report_shows_source_and_target_context_for_translation(
             length=len(source_term),
             preferred_term="TU Dortmund University",
         ),
+        occurrence_count=3,
         source_url=source_url,
         target_url=target_url,
         source_context=source_context,
@@ -550,5 +551,8 @@ def test_write_html_report_shows_source_and_target_context_for_translation(
     assert "Englischer Zieltext" in html
     assert f"<mark>{source_term}</mark>" in html
     assert target_context in html
+    assert "Deutsch: Technische Universität Dortmund" in html
+    assert "Englisch: TU Dortmund University" in html
+    assert "Vorkommen im Quelltext: 3" in html
     assert "<mark>Dortmund University of Technology</mark>" not in html
     assert "<td>" + chr(92) + "\n" not in html

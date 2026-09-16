@@ -73,6 +73,7 @@ def finding_from_terminology_match(
 def finding_from_missing_english_translation(
     match: TerminologyMatch,
     *,
+    occurrence_count: int,
     source_url: str,
     target_url: str,
     source_context: str,
@@ -95,5 +96,6 @@ def finding_from_missing_english_translation(
         source_rule_id="TU_EN_MISSING_TRANSLATION",
         source_url=source_url,
         source_term=match.matched_text,
+        occurrence_count=occurrence_count,
         target_context=target_context,
     )

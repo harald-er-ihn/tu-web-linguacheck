@@ -60,6 +60,19 @@ def _suggestions_text(suggestions: Sequence[str]) -> str:
     return f"{visible_text} … und {remaining_suggestions} {remaining_text}"
 
 
+def _translation_terms_text(finding: Finding) -> str | None:
+    """Formatiert Begriffe und Anzahl für einen Übersetzungsfund."""
+    if finding.source_term is None or finding.occurrence_count is None:
+        return None
+
+    english_term = finding.suggestions[0] if finding.suggestions else "-"
+    return (
+        f"Deutsch: {finding.source_term}\n"
+        f"Englisch: {english_term}\n"
+        f"Vorkommen im Quelltext: {finding.occurrence_count}"
+    )
+
+
 def _context_evidence(finding: Finding) -> str:
     """Erzeugt einen sicheren Kontextnachweis für einen Fund."""
     if finding.target_context is None:
@@ -76,7 +89,9 @@ def _context_evidence(finding: Finding) -> str:
 
 def _finding_row(finding: Finding) -> str:
     """Erzeugt eine sicher escapte Tabellenzeile für einen Sprachfund."""
-    suggestions = _suggestions_text(finding.suggestions)
+    suggestions = _translation_terms_text(finding) or _suggestions_text(
+        finding.suggestions
+    )
     message = escape(finding.message)
     source_rule_id = escape(finding.source_rule_id)
     badges = (
