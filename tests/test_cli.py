@@ -646,6 +646,52 @@ def test_check_url_reports_unavailable_local_languagetool_server(
     assert "Traceback" not in result.output
 
 
+def test_check_crawl_forwards_stay_under_start_path(monkeypatch, tmp_path) -> None:
+    """Der Crawl-Check leitet die Startpfadbegrenzung an den Content-Crawl weiter."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=0,
+            max_pages=1,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+    captured_options: list[bool] = []
+
+    def fake_crawl_pages_with_content(**kwargs):
+        captured_options.append(kwargs["stay_under_start_path"])
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda _path: config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.crawl_pages_with_content",
+        fake_crawl_pages_with_content,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        lambda _self, **_kwargs: [],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-crawl",
+            "https://example.org/familie/newsletter/",
+            str(config_path),
+            "--stay-under-start-path",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured_options == [True]
+
+
 def test_check_crawl_checks_content_of_crawled_pages(monkeypatch, tmp_path) -> None:
     """Der Crawl-Check prüft die sichtbaren Inhalte aller gecrawlten Seiten."""
     config_path = tmp_path / "config.yaml"
@@ -668,11 +714,13 @@ def test_check_crawl_checks_content_of_crawled_pages(monkeypatch, tmp_path) -> N
         *,
         start_url,
         config,
+        stay_under_start_path,
         on_progress,
         on_error,
     ):
         assert start_url == "https://example.org/"
         assert config.max_depth == 3
+        assert stay_under_start_path is False
         on_progress(
             1,
             type("Candidate", (), {"url": "https://example.org/", "depth": 0})(),
@@ -778,11 +826,13 @@ def test_check_crawl_displays_url_for_each_finding(monkeypatch, tmp_path) -> Non
         *,
         start_url,
         config,
+        stay_under_start_path,
         on_progress,
         on_error,
     ):
         assert start_url == "https://example.org/"
         assert config.max_depth == 3
+        assert stay_under_start_path is False
         assert on_progress is not None
         assert on_error is not None
 

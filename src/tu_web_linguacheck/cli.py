@@ -520,6 +520,11 @@ def _write_reports(
 def check_crawl(
     url: str,
     config_path: Path,
+    stay_under_start_path: bool = typer.Option(
+        False,
+        "--stay-under-start-path",
+        help="Beschränkt den Crawl auf den Startpfad und dessen Unterpfade.",
+    ),
     report_path: Path | None = typer.Option(
         None,
         "--report",
@@ -546,6 +551,7 @@ def check_crawl(
     pages = crawl_pages_with_content(
         start_url=url,
         config=config.crawl,
+        stay_under_start_path=stay_under_start_path,
         on_progress=lambda number, candidate: typer.echo(
             f"Crawle Seite {number}/{config.crawl.max_pages}: {candidate.url}"
         ),
