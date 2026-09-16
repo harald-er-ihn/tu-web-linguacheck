@@ -32,6 +32,20 @@ Einen Crawl mit Sprachprüfung startest du beispielsweise so:
 tu-web-linguacheck check-crawl https://example.org/ config/meine-seite.local.yaml
 ```
 
+Mit `--stay-under-start-path` begrenzt du den Crawl optional auf den Startpfad
+und dessen echte Unterpfade:
+
+```bash
+tu-web-linguacheck check-crawl https://example.org/familie/newsletter/ \
+  config/meine-seite.local.yaml --stay-under-start-path
+```
+
+Im Beispiel werden `/familie/newsletter/` und etwa
+`/familie/newsletter/september-2026/` verarbeitet. URLs außerhalb dieses
+Bereichs, etwa `/familie/`, `/familie/aktuelles/` oder
+`/familie/newsletter-archiv/`, werden nicht gecrawlt. Das gilt auch für
+zusätzliche Start-URLs aus XML-Sitemaps.
+
 ## Grundstruktur
 
 ```yaml
