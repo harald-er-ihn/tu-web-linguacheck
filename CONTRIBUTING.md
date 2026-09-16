@@ -20,13 +20,14 @@ soll ausschließlich über lokale Komponenten erfolgen.
 
 ## Codequalität
 
-Das Projekt verwendet:
+Vor jedem Commit führe den vollständigen Qualitätslauf aus:
 
-- `pytest` für Tests,
-- `ruff` für Linting und Formatierung.
+```bash
+tools/code_audit.sh
+```
 
-Die konkreten Befehle und Konfigurationen werden mit dem Python-Projektgerüst
-ergänzt.
+`tools/code_audit.sh` bündelt Ruff, pytest, Pylint, Xenon, die Markdown-Prüfung sowie
+Git-Prüfungen für Diff und Arbeitsverzeichnis.
 
 ## Änderungen einreichen
 
