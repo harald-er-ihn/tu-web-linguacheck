@@ -50,8 +50,8 @@ tu-web-linguacheck check-url URL CONFIG_PATH --report DATEI.html
 
 ## Architektur
 
-Die Architekturübersicht zeigt die aktuell implementierten Komponenten und
-Sicherheitsgrenzen sowie vorgesehene spätere Berichtsbausteine.
+Die Architekturübersicht zeigt die aktuell implementierten Komponenten,
+Sicherheitsgrenzen und lokalen Berichtswege.
 
 ![Architektur von tu-web-linguacheck](docs/images/architecture.svg)
 
