@@ -221,6 +221,7 @@ def test_crawl_pages_with_content_returns_extracted_crawl_results(
         *,
         start_url: str,
         config: CrawlConfig,
+        stay_under_start_path,
         additional_start_urls,
         fetch_page,
         sleep,
@@ -228,6 +229,7 @@ def test_crawl_pages_with_content_returns_extracted_crawl_results(
         on_error,
     ) -> list[CrawlCandidate]:
         assert start_url == "https://example.org/"
+        assert stay_under_start_path is False
         assert config.max_pages == 1
         assert additional_start_urls == []
         assert on_progress is None
@@ -316,6 +318,7 @@ def test_crawl_pages_with_content_forwards_progress_callback(monkeypatch) -> Non
         *,
         start_url,
         config,
+        stay_under_start_path,
         additional_start_urls,
         fetch_page,
         sleep,
@@ -323,6 +326,7 @@ def test_crawl_pages_with_content_forwards_progress_callback(monkeypatch) -> Non
         on_error,
     ):
         assert start_url == "https://example.org/"
+        assert stay_under_start_path is False
         assert config.max_pages == 1
         assert additional_start_urls == []
         assert on_error is None
@@ -351,6 +355,55 @@ def test_crawl_pages_with_content_forwards_progress_callback(monkeypatch) -> Non
     )
 
     assert reported_events == [(1, expected_candidate)]
+
+
+def test_crawl_pages_with_content_forwards_stay_under_start_path(monkeypatch) -> None:
+    """Der Content-Crawl leitet die Startpfadbegrenzung an den HTML-Crawl weiter."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=0,
+        max_pages=1,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+    )
+    captured_stay_under_start_path: bool | None = None
+
+    def fake_crawl_html_pages(
+        *,
+        start_url,
+        config,
+        stay_under_start_path,
+        additional_start_urls,
+        fetch_page,
+        sleep,
+        on_progress,
+        on_error,
+    ):
+        nonlocal captured_stay_under_start_path
+        del (
+            start_url,
+            config,
+            additional_start_urls,
+            fetch_page,
+            sleep,
+            on_progress,
+            on_error,
+        )
+        captured_stay_under_start_path = stay_under_start_path
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.crawl_html_pages",
+        fake_crawl_html_pages,
+    )
+
+    crawl_pages_with_content(
+        start_url="https://example.org/",
+        config=config,
+        stay_under_start_path=True,
+    )
+
+    assert captured_stay_under_start_path is True
 
 
 def test_crawl_html_pages_continues_after_timeout_and_reports_error() -> None:
@@ -414,6 +467,7 @@ def test_crawl_pages_with_content_forwards_error_callback(monkeypatch) -> None:
         *,
         start_url,
         config,
+        stay_under_start_path,
         additional_start_urls,
         fetch_page,
         sleep,
@@ -421,6 +475,7 @@ def test_crawl_pages_with_content_forwards_error_callback(monkeypatch) -> None:
         on_error,
     ):
         assert start_url == "https://example.org/"
+        assert stay_under_start_path is False
         assert config.max_pages == 1
         assert additional_start_urls == []
         assert fetch_page(start_url) == "<main>Ein Test.</main>"

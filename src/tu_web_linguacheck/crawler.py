@@ -192,6 +192,7 @@ def crawl_pages_with_content(
     *,
     start_url: str,
     config: CrawlConfig,
+    stay_under_start_path: bool = False,
     on_progress: Callable[[int, CrawlCandidate], None] | None = None,
     on_error: Callable[[CrawlCandidate, Exception], None] | None = None,
 ) -> list[CrawledPage]:
@@ -211,6 +212,7 @@ def crawl_pages_with_content(
     candidates = crawl_html_pages(
         start_url=start_url,
         config=config,
+        stay_under_start_path=stay_under_start_path,
         additional_start_urls=_find_sitemap_page_urls(config),
         fetch_page=fetch_page,
         sleep=time.sleep,
