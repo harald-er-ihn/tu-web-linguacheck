@@ -49,6 +49,14 @@ wiederholen.
 - `tu` kombiniert die deutsche und englische TU-Terminologieprüfung für
   sprachsegmentierte Websites.
 
+## Übersetzungsfunde
+
+Bei fehlenden bevorzugten englischen Übersetzungen zeigt der Bericht den
+deutschen Quellbegriff, die erwartete englische Übersetzung und die Anzahl der
+Vorkommen des Quellbegriffs im vollständigen deutschen Quelltext. Derselbe
+fehlende Terminologieeintrag wird je deutschem Quell- und englischem Zielseitenpaar
+nur einmal berichtet.
+
 ## Sprachprüfwerkzeug und Sprachen
 
 Für Rechtschreibung, Grammatik und Zeichensetzung nutzt das Werkzeug einen
