@@ -481,7 +481,11 @@ def test_write_pdf_report_requests_pdf_ua_1(monkeypatch, tmp_path) -> None:
         ),
     )
 
-    fake_html.write_pdf.assert_called_once_with(report_path, pdf_variant="pdf/ua-1")
+    fake_html.write_pdf.assert_called_once_with(
+        report_path,
+        pdf_variant="pdf/ua-1",
+        uncompressed_pdf=False,
+    )
 
 
 def test_write_html_report_adds_print_rules_for_finding_tables(tmp_path) -> None:
