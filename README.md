@@ -18,6 +18,36 @@ HTML-Inhalte und prüft diese lokal. PDF-Dateien werden nicht verarbeitet.
 - robots.txt standardmäßig beachten
 - keine Website-Inhalte an externe Cloud-KI- oder Sprachprüfungs-APIs senden
 
+## Befehlsübersicht
+
+Die vollständige Referenz liefert jeweils:
+
+```bash
+tu-web-linguacheck COMMAND --help
+```
+
+- `inspect`: Sprachlinks einer erlaubten HTML-Seite anzeigen.
+  Erfordert `URL`, `--allowed-domain DOMAIN` und `--source-language SPRACHE`.
+- `check-text`: Text direkt mit dem lokalen LanguageTool-Server prüfen.
+  Erfordert `TEXT`, `--language CODE`, `--url URL` und `--profile PROFIL`.
+- `validate-config`: Eine lokale YAML-Konfiguration laden und validieren.
+  Erfordert `CONFIG_PATH`.
+- `check-url`: Genau eine erlaubte HTML-Seite prüfen.
+  Erfordert `URL CONFIG_PATH`; optional sind `--report DATEI.html` und
+  `--pdf-report DATEI.pdf`.
+- `check-crawl`: Erlaubte HTML-Seiten crawlen und sichtbare Texte prüfen.
+  Erfordert `URL CONFIG_PATH`; optional sind `--stay-under-start-path`,
+  `--report DATEI.html` und `--pdf-report DATEI.pdf`.
+- `check-translation`: Deutsche Begriffe gegen die englische Sprachversion
+  einer Seite prüfen. Erfordert `URL CONFIG_PATH`; optional sind
+  `--report DATEI.html` und `--pdf-report DATEI.pdf`.
+
+Schnellstart für eine einzelne Seite:
+
+```bash
+tu-web-linguacheck check-url URL CONFIG_PATH --report DATEI.html
+```
+
 ## Architektur
 
 Die Architekturübersicht zeigt die aktuell implementierten Komponenten und
