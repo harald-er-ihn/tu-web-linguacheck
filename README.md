@@ -90,9 +90,9 @@ generierte Berichte. Ihre Inhalte werden nicht in Git eingecheckt.
 
 ## Projektstatus
 
-Das Projekt befindet sich im Aufbau. Aktuell existieren die grundlegende
-Repository-Struktur und die Projektdokumentation. Der Crawler und die
-Sprachprüfung sind noch nicht implementiert.
+Das Projekt stellt lokale Prüfungen einzelner Seiten und kontrollierte Crawls
+bereit. Es unterstützt LanguageTool-, Terminologie- und Übersetzungsprüfungen
+sowie lokale HTML- und PDF-Berichte.
 
 ## Lizenz
 
