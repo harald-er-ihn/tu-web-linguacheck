@@ -69,18 +69,26 @@ lokal mit `tools/generate_architecture_diagram.sh` erzeugt.
 - `tu`: Kombinierte deutsch- und englischsprachige TU-Prüfungen mit
   getrennter deutscher und englischer Terminologie.
 
-## Geplanter Technologiestack
+## Technologiestack
+
+### Laufzeit
 
 - Python 3.12
-- Scrapy
-- BeautifulSoup4 und lxml
-- lokaler LanguageTool-Server
-- Typer
+- Beautiful Soup 4
+- markdown-it-py
 - Pydantic
-- Jinja2
 - PyYAML
+- WeasyPrint
+- Typer
+- lokaler LanguageTool-Server
+
+### Entwicklung und Qualität
+
 - pytest
 - Ruff
+- Pylint
+- Xenon
+- PyMarkdownLnt
 
 ## Datenschutz und lokale Verarbeitung
 
