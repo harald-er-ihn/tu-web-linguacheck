@@ -151,3 +151,26 @@ def test_find_missing_english_translations_reports_missing_preferred_term() -> N
     assert matches[0].offset == 4
     assert matches[0].length == 31
     assert matches[0].preferred_term == "TU Dortmund University"
+
+
+def test_find_missing_english_translations_deduplicates_repeated_source_term() -> None:
+    """Mehrfache deutsche Quellbegriffe werden nur einmal als fehlend gemeldet."""
+    source_term = "Technische Universität Dortmund"
+    entries = (
+        TerminologyEntry(
+            german=source_term,
+            preferred_english="TU Dortmund University",
+            variants_to_flag=(),
+        ),
+    )
+    german_text = f"Die {source_term} informiert. {source_term} forscht."
+
+    matches = find_missing_english_translations(
+        german_text,
+        "Dortmund University of Technology provides information.",
+        entries,
+    )
+
+    assert len(matches) == 1
+    assert matches[0].matched_text == source_term
+    assert matches[0].offset == 4

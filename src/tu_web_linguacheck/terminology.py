@@ -112,9 +112,21 @@ def find_missing_english_translations(
 ) -> list[TerminologyMatch]:
     """Findet deutsche Begriffe, deren bevorzugtes Englisch im Zieltext fehlt."""
     english_text_casefolded = english_text.casefold()
+    missing_matches: list[TerminologyMatch] = []
+    seen_entries: set[tuple[str, str]] = set()
 
-    return [
-        match
-        for match in find_german_terminology_matches(german_text, entries)
-        if match.preferred_term.casefold() not in english_text_casefolded
-    ]
+    for entry in entries:
+        entry_key = (entry.german.casefold(), entry.preferred_english.casefold())
+        if (
+            not entry.german
+            or entry_key in seen_entries
+            or entry.preferred_english.casefold() in english_text_casefolded
+        ):
+            continue
+
+        matches = find_german_terminology_matches(german_text, (entry,))
+        if matches:
+            missing_matches.append(matches[0])
+            seen_entries.add(entry_key)
+
+    return missing_matches
