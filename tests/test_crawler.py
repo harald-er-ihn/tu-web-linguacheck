@@ -552,3 +552,50 @@ def test_crawl_site_includes_pages_from_configured_sitemaps(
         "https://example.org/from-root/",
         "https://example.org/from-child/",
     ]
+
+
+def test_crawl_html_pages_stays_under_start_path() -> None:
+    """Der Crawl begrenzt sich optional auf Startpfad und echte Unterpfade."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=1,
+        max_pages=10,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+    )
+    start_url = "https://example.org/familie/newsletter/"
+    html_by_url = {
+        start_url: """
+        <main>
+          <a href="/familie/newsletter/september-2026/">September</a>
+          <a href="/familie/">Familie</a>
+          <a href="/familie/newsletter-archiv/">Archiv</a>
+        </main>
+        """,
+        "https://example.org/familie/newsletter/september-2026/": "<main></main>",
+    }
+    fetched_urls: list[str] = []
+
+    def fetch_page(url: str) -> str:
+        fetched_urls.append(url)
+        return html_by_url[url]
+
+    candidates = crawl_html_pages(
+        start_url=start_url,
+        config=config,
+        fetch_page=fetch_page,
+        sleep=lambda _seconds: None,
+        stay_under_start_path=True,
+    )
+
+    assert candidates == [
+        CrawlCandidate(url=start_url, depth=0),
+        CrawlCandidate(
+            url="https://example.org/familie/newsletter/september-2026/",
+            depth=1,
+        ),
+    ]
+    assert fetched_urls == [
+        start_url,
+        "https://example.org/familie/newsletter/september-2026/",
+    ]

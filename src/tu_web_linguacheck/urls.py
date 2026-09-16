@@ -26,6 +26,24 @@ def is_allowed_url(url: str, allowed_domains: Sequence[str]) -> bool:
     )
 
 
+def is_url_under_start_path(url: str, start_url: str) -> bool:
+    """Prüft, ob eine URL innerhalb des Startpfads derselben Origin liegt."""
+    parsed_url = urlsplit(url)
+    parsed_start_url = urlsplit(start_url)
+
+    if (
+        parsed_url.scheme != parsed_start_url.scheme
+        or parsed_url.netloc.lower() != parsed_start_url.netloc.lower()
+    ):
+        return False
+
+    start_path = parsed_start_url.path.rstrip("/") or "/"
+
+    return parsed_url.path == start_path or parsed_url.path.startswith(
+        f"{start_path.rstrip('/')}/"
+    )
+
+
 def normalize_url(url: str, tracking_parameters: Sequence[str]) -> str:
     """Entfernt Fragmente und konfigurierte Tracking-Parameter aus einer URL."""
     parsed_url = urlsplit(url)

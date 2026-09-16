@@ -12,7 +12,10 @@ from tu_web_linguacheck.http import fetch_html, fetch_xml
 from tu_web_linguacheck.models import CrawlCandidate, CrawledPage
 from tu_web_linguacheck.page_links import find_crawlable_page_links
 from tu_web_linguacheck.sitemap import parse_sitemap
-from tu_web_linguacheck.urls import prepare_crawl_url
+from tu_web_linguacheck.urls import (
+    is_url_under_start_path,
+    prepare_crawl_url,
+)
 
 
 class CrawlQueue:
@@ -95,11 +98,25 @@ def _find_sitemap_page_urls(config: CrawlConfig) -> list[str]:
     return page_urls
 
 
+def _filter_urls_by_start_path(
+    urls: Sequence[str],
+    *,
+    start_url: str,
+    stay_under_start_path: bool,
+) -> list[str]:
+    """Filtert URLs optional auf den Startpfad und dessen Unterpfade."""
+    if not stay_under_start_path:
+        return list(urls)
+
+    return [url for url in urls if is_url_under_start_path(url, start_url)]
+
+
 # pylint: disable=too-many-arguments
 def crawl_html_pages(
     *,
     start_url: str,
     config: CrawlConfig,
+    stay_under_start_path: bool = False,
     additional_start_urls: Sequence[str] = (),
     fetch_page: Callable[[str], str],
     sleep: Callable[[float], None],
@@ -116,7 +133,13 @@ def crawl_html_pages(
         start_url=prepared_start_url,
         max_depth=config.max_depth,
     )
-    queue.add_start_urls(additional_start_urls)
+    queue.add_start_urls(
+        _filter_urls_by_start_path(
+            additional_start_urls,
+            start_url=prepared_start_url,
+            stay_under_start_path=stay_under_start_path,
+        )
+    )
     processed_candidates: list[CrawlCandidate] = []
 
     while len(processed_candidates) < config.max_pages:
@@ -140,10 +163,10 @@ def crawl_html_pages(
 
         queue.add_children(
             parent=candidate,
-            urls=find_crawlable_page_links(
-                candidate.url,
-                html,
-                config,
+            urls=_filter_urls_by_start_path(
+                find_crawlable_page_links(candidate.url, html, config),
+                start_url=prepared_start_url,
+                stay_under_start_path=stay_under_start_path,
             ),
         )
 

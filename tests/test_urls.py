@@ -5,6 +5,7 @@ import pytest
 from tu_web_linguacheck.config import CrawlConfig
 from tu_web_linguacheck.urls import (
     is_allowed_url,
+    is_url_under_start_path,
     normalize_url,
     prepare_crawl_url,
     should_crawl_url,
@@ -175,3 +176,42 @@ def test_prepare_crawl_url_rejects_foreign_or_excluded_url() -> None:
 
     assert prepare_crawl_url("https://external.example/page/", config) is None
     assert prepare_crawl_url("https://example.org/document.pdf", config) is None
+
+
+@pytest.mark.parametrize(
+    ("url", "start_url", "expected"),
+    [
+        (
+            "https://example.org/familie/newsletter/",
+            "https://example.org/familie/newsletter/",
+            True,
+        ),
+        (
+            "https://example.org/familie/newsletter/september-2026/",
+            "https://example.org/familie/newsletter/",
+            True,
+        ),
+        (
+            "https://example.org/familie/",
+            "https://example.org/familie/newsletter/",
+            False,
+        ),
+        (
+            "https://example.org/familie/aktuelles/",
+            "https://example.org/familie/newsletter/",
+            False,
+        ),
+        (
+            "https://example.org/familie/newsletter-archiv/",
+            "https://example.org/familie/newsletter/",
+            False,
+        ),
+    ],
+)
+def test_is_url_under_start_path(
+    url: str,
+    start_url: str,
+    expected: bool,
+) -> None:
+    """Nur die Start-URL und echte Unterpfade bleiben im Startbereich."""
+    assert is_url_under_start_path(url, start_url) is expected
