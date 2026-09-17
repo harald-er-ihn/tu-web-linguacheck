@@ -1,9 +1,11 @@
 """Hilfsfunktionen für lokale HTTP-Antworten."""
 
+import ssl
 from collections.abc import Callable, Sequence
 from urllib import robotparser
+from urllib.error import HTTPError
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import HTTPSHandler, OpenerDirector, Request, build_opener
 
 from tu_web_linguacheck.urls import is_allowed_url
 
@@ -26,6 +28,34 @@ def is_xml_content_type(content_type: str) -> bool:
     return media_type in {"application/xml", "text/xml"}
 
 
+def _build_http_opener() -> OpenerDirector:
+    """Erstellt einen Opener mit TLS 1.2 als maximaler TLS-Version."""
+    context = ssl.create_default_context()
+    context.maximum_version = ssl.TLSVersion.TLSv1_2
+
+    return build_opener(HTTPSHandler(context=context))
+
+
+def _load_robots(
+    robots_url: str, opener: OpenerDirector
+) -> robotparser.RobotFileParser:
+    """Lädt robots.txt über den kontrollierten Opener."""
+    robots = robotparser.RobotFileParser()
+    robots.set_url(robots_url)
+    request = Request(robots_url, headers={"User-Agent": _USER_AGENT})
+
+    try:
+        with opener.open(request, timeout=_DEFAULT_TIMEOUT_SECONDS) as response:
+            robots.parse(response.read().decode("utf-8").splitlines())
+    except HTTPError as error:
+        if error.code in (401, 403):
+            robots.disallow_all = True
+        elif 400 <= error.code < 500:
+            robots.allow_all = True
+
+    return robots
+
+
 def _fetch_document(
     url: str,
     allowed_domains: Sequence[str],
@@ -39,17 +69,15 @@ def _fetch_document(
 
     parsed_url = urlsplit(url)
     robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
-
-    robots = robotparser.RobotFileParser()
-    robots.set_url(robots_url)
-    robots.read()
+    opener = _build_http_opener()
+    robots = _load_robots(robots_url, opener)
 
     if not robots.can_fetch(_USER_AGENT, url):
         raise ValueError(f"robots.txt erlaubt keinen Abruf: {url}")
 
     request = Request(url, headers={"User-Agent": _USER_AGENT})
 
-    with urlopen(request, timeout=_DEFAULT_TIMEOUT_SECONDS) as response:
+    with opener.open(request, timeout=_DEFAULT_TIMEOUT_SECONDS) as response:
         final_url = response.geturl()
 
         if not is_allowed_url(final_url, allowed_domains):
