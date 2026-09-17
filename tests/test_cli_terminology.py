@@ -322,6 +322,7 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
     """Der Übersetzungscheck meldet fehlendes Zielenglisch in einem PDF-Bericht."""
     config_path = tmp_path / "config.yaml"
     terminology_path = tmp_path / "tu-terminology.local.json"
+    cfv_terminology_path = tmp_path / "cfv-terminology.local.json"
     pdf_report_path = tmp_path / "translation-report.pdf"
     terminology_path.write_text(
         """\
@@ -338,6 +339,22 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
 """,
         encoding="utf-8",
     )
+    cfv_terminology_path.write_text(
+        """\
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "german": "Begleitservice",
+      "preferred_english": "accompaniment service",
+      "variants_to_flag": ["escort service"]
+    }
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+
     config = ProjectConfig(
         profile="tu",
         crawl=CrawlConfig(
@@ -350,6 +367,7 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
         check={
             "language": "de-DE",
             "english_terminology_path": terminology_path,
+            "additional_english_terminology_paths": [cfv_terminology_path],
         },
     )
     source_url = "https://example.org/de/testseite/"
@@ -381,10 +399,16 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
         lambda html: (
             PageContent(
                 title="Deutsch",
-                text="Die Technische Universität Dortmund informiert.",
+                text=(
+                    "Die Technische Universität Dortmund "
+                    "informiert über den Begleitservice."
+                ),
                 blocks=(
                     TextBlock(
-                        text="Die Technische Universität Dortmund informiert.",
+                        text=(
+                            "Die Technische Universität Dortmund "
+                            "informiert über den Begleitservice."
+                        ),
                         language="de",
                     ),
                 ),
@@ -392,10 +416,13 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
             if html == "german-html"
             else PageContent(
                 title="English",
-                text="Dortmund University of Technology provides information.",
+                text="Dortmund University of Technology provides an escort service.",
                 blocks=(
                     TextBlock(
-                        text="Dortmund University of Technology provides information.",
+                        text=(
+                            "Dortmund University of Technology provides "
+                            "an escort service."
+                        ),
                         language="en",
                     ),
                 ),
@@ -429,19 +456,28 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
     assert result.exit_code == 0
     assert not checked_languages
     assert f"Englische Übersetzungs-URL: {target_url}" in result.output
-    assert "Sprachfunde: 1" in result.output
+    assert "Sprachfunde: 3" in result.output
     assert f"URL: {target_url}" in result.output
     assert (
         "Meldung: Die bevorzugte englische Übersetzung fehlt auf der "
         "englischen Zielseite." in result.output
     )
     assert "Deutscher Ausgangsbegriff: Technische Universität Dortmund" in result.output
+    assert "Begleitservice" in result.output
+    assert "accompaniment service" in result.output
+    assert "escort service" in result.output
+
     assert "Erwartete englische Übersetzung: TU Dortmund University" in result.output
-    assert "Nicht bevorzugte TU-Terminologie" not in result.output
+    assert "Meldung: Nicht bevorzugte TU-Terminologie." in result.output
     assert f"PDF-Bericht: {pdf_report_path}" in result.output
     assert written_pdf_reports
-    assert written_pdf_reports[0][1]["findings"][0].target_context == (
-        "Dortmund University of Technology provides information."
+    assert (
+        next(
+            finding
+            for finding in written_pdf_reports[0][1]["findings"]
+            if finding.source_term == "Begleitservice"
+        ).target_context
+        == "Dortmund University of Technology provides an escort service."
     )
 
 

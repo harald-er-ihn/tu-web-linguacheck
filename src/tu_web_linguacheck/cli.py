@@ -644,6 +644,20 @@ def _target_context_for_source_offset(
     return None
 
 
+def _load_english_terminology(config: ProjectConfig):
+    """Lädt die primäre und alle zusätzlichen englischen Terminologiequellen."""
+    terminology_paths = [
+        config.check.english_terminology_path,
+        *config.check.additional_english_terminology_paths,
+    ]
+    return tuple(
+        entry
+        for terminology_path in terminology_paths
+        if terminology_path is not None
+        for entry in load_terminology(terminology_path)
+    )
+
+
 def _check_translation_page_contents(
     german_content: PageContent,
     english_content: PageContent,
@@ -670,10 +684,8 @@ def _check_translation_page_contents(
                     profile="tu-de",
                 )
             )
-    if config.check.english_terminology_path is not None:
-        english_terminology_entries = load_terminology(
-            config.check.english_terminology_path
-        )
+    english_terminology_entries = _load_english_terminology(config)
+    if english_terminology_entries:
         for content, url in (
             (german_content, german_url),
             (english_content, english_url),
@@ -761,7 +773,7 @@ def check_translation(
         for match in find_missing_english_translations(
             german_content.text,
             english_content.text,
-            load_terminology(config.check.english_terminology_path),
+            _load_english_terminology(config),
         )
     ]
 
