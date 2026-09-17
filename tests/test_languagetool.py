@@ -194,3 +194,26 @@ def test_check_sends_disabled_rule_ids_to_local_server(monkeypatch: Any) -> None
         },
         "timeout": 10.0,
     }
+
+
+def test_check_raises_clear_error_when_local_server_times_out(
+    monkeypatch: Any,
+) -> None:
+    """Der Client meldet eine Zeitüberschreitung des lokalen Dienstes klar."""
+
+    def fake_urlopen(*_args: Any, **_kwargs: Any) -> FakeResponse:
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.languagetool.urlopen",
+        fake_urlopen,
+    )
+
+    with pytest.raises(
+        LanguageToolUnavailableError,
+        match=r"127\.0\.0\.1:8081",
+    ):
+        LanguageToolClient().check(
+            text="Ein selbst erzeugter Test.",
+            language="de-DE",
+        )
