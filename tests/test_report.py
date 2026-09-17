@@ -236,7 +236,10 @@ def test_write_html_report_shows_escaped_check_context(tmp_path) -> None:
 
     assert '<section class="check-context">' in html
     assert "<h2>Prüfkontext</h2>" in html
-    assert "Start-URL: https://example.org/start?source=&lt;report&gt;" in html
+    assert (
+        'Start-URL: <a href="https://example.org/start?source=&lt;report&gt;">'
+        "https://example.org/start?source=&lt;report&gt;</a>"
+    ) in html
     assert "Profil: tu-de" in html
     assert "Sprache: de-DE" in html
 

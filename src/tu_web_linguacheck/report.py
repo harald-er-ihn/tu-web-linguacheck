@@ -224,6 +224,7 @@ def _document(
     project_name_and_version = " ".join(
         (escape(project_metadata.name), escape(project_metadata.version))
     )
+    escaped_start_url = escape(context.start_url, quote=True)
 
     return f"""\
 <!doctype html>
@@ -361,7 +362,7 @@ def _document(
   {empty_state}
   <section class="check-context">
     <h2>Prüfkontext</h2>
-    <p>Start-URL: {escape(context.start_url)}</p>
+    <p>Start-URL: <a href="{escaped_start_url}">{escaped_start_url}</a></p>
     <p>Profil: {escape(context.profile)}</p>
     <p>Sprache: {escape(context.language)}</p>
   </section>
