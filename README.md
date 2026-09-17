@@ -7,6 +7,11 @@ Zeichensetzung.
 Das Projekt crawlt ausschließlich erlaubte Domains, extrahiert sichtbare
 HTML-Inhalte und prüft diese lokal. PDF-Dateien werden nicht verarbeitet.
 
+## Installation
+
+Die [Installation unter Windows mit WSL2](docs/installation-wsl2.md) beschreibt die
+lokale Einrichtung einschließlich des verpflichtenden lokalen LanguageTool-Servers.
+
 ## Ziele
 
 - öffentlich erreichbare HTML-Seiten crawlen
