@@ -1166,3 +1166,59 @@ def test_check_page_blocks_uses_explicit_html_languages(
         ("Français de France.", "fr-FR"),
         ("Español.", "es"),
     ]
+
+
+def test_check_translation_rejects_target_outside_start_path(
+    monkeypatch, tmp_path
+) -> None:
+    """Der Übersetzungscheck begrenzt das Ziel optional auf den Startpfad."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=0,
+            max_pages=1,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+        check={"english_terminology_path": tmp_path / "terminology.json"},
+    )
+    source_url = "https://example.org/familie/newsletter/"
+    target_url = "https://example.org/en/newsletter/"
+    fetched_urls: list[str] = []
+
+    def fake_fetch_html(url: str, _allowed_domains: list[str]) -> str:
+        fetched_urls.append(url)
+        return "<html></html>"
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda _path: config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.prepare_crawl_url",
+        lambda url, _crawl_config: url,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        fake_fetch_html,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.find_allowed_page_language_links",
+        lambda *_args: [LanguageLink(target_url, "en", "hreflang")],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-translation",
+            source_url,
+            str(config_path),
+            "--stay-under-start-path",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Keine erlaubte englische Übersetzungs-URL gefunden." in result.output
+    assert fetched_urls == [source_url]

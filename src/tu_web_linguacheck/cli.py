@@ -37,7 +37,7 @@ from tu_web_linguacheck.terminology import (
     find_terminology_matches,
     load_terminology,
 )
-from tu_web_linguacheck.urls import prepare_crawl_url
+from tu_web_linguacheck.urls import is_url_under_start_path, prepare_crawl_url
 
 app = typer.Typer(
     help=(
@@ -703,10 +703,41 @@ def _check_translation_page_contents(
     return terminology_findings, 0
 
 
+def _find_translation_url(
+    *,
+    source_url: str,
+    source_html: str,
+    allowed_domains: Sequence[str],
+    stay_under_start_path: bool,
+) -> str | None:
+    """Findet die erste erlaubte englische Übersetzungs-URL."""
+    translation_links = find_translation_links(
+        find_allowed_page_language_links(
+            source_url,
+            source_html,
+            allowed_domains,
+        ),
+        "de",
+    )
+    if stay_under_start_path:
+        translation_links = [
+            language_link
+            for language_link in translation_links
+            if is_url_under_start_path(language_link.href, source_url)
+        ]
+
+    return translation_links[0].href if translation_links else None
+
+
 @app.command()
 def check_translation(
     url: str,
     config_path: Path,
+    stay_under_start_path: bool = typer.Option(
+        False,
+        "--stay-under-start-path",
+        help="Beschränkt die Übersetzungs-URL auf den Startpfad und dessen Unterpfade.",
+    ),
     report_path: Path | None = typer.Option(
         None,
         "--report",
@@ -732,19 +763,15 @@ def check_translation(
 
     german_html = fetch_html(prepared_url, config.crawl.allowed_domains)
     german_content = extract_page_content(german_html)
-    translation_links = find_translation_links(
-        find_allowed_page_language_links(
-            prepared_url,
-            german_html,
-            config.crawl.allowed_domains,
-        ),
-        "de",
+    english_url = _find_translation_url(
+        source_url=prepared_url,
+        source_html=german_html,
+        allowed_domains=config.crawl.allowed_domains,
+        stay_under_start_path=stay_under_start_path,
     )
-    if not translation_links:
+    if english_url is None:
         typer.echo("Keine erlaubte englische Übersetzungs-URL gefunden.")
         raise typer.Exit(code=1)
-
-    english_url = translation_links[0].href
     english_html = fetch_html(english_url, config.crawl.allowed_domains)
     english_content = extract_page_content(english_html)
     language_findings, checked_blocks = _check_translation_page_contents(
