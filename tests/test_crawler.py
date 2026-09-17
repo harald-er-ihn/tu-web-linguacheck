@@ -267,6 +267,11 @@ def test_crawl_pages_with_content_returns_extracted_crawl_results(
                 TextBlock(text="Ein Test.", language="de"),
                 TextBlock(text="English text.", language="en"),
             ),
+            html=(
+                '<html lang="de"><title>Testseite</title><main>'
+                '<p>Ein Test.</p><p lang="en">English text.</p>'
+                "</main></html>"
+            ),
         )
     ]
 
@@ -654,3 +659,55 @@ def test_crawl_html_pages_stays_under_start_path() -> None:
         start_url,
         "https://example.org/familie/newsletter/september-2026/",
     ]
+
+
+def test_crawl_pages_with_content_retains_fetched_html(monkeypatch) -> None:
+    """Der Content-Crawl stellt das bereits abgerufene HTML je Seite bereit."""
+    config = CrawlConfig(
+        allowed_domains=["example.org"],
+        max_depth=0,
+        max_pages=1,
+        requests_per_second=1.0,
+        obey_robots_txt=True,
+    )
+    source_url = "https://example.org/schuds/"
+    source_html = "<html><body><main>Inhalt</main></body></html>"
+
+    def fake_crawl_html_pages(
+        *,
+        start_url,
+        config,
+        stay_under_start_path,
+        additional_start_urls,
+        fetch_page,
+        sleep,
+        on_progress,
+        on_error,
+    ):
+        del (
+            start_url,
+            config,
+            stay_under_start_path,
+            additional_start_urls,
+            sleep,
+            on_progress,
+            on_error,
+        )
+        assert fetch_page(source_url) == source_html
+        return [CrawlCandidate(url=source_url, depth=0)]
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.crawl_html_pages",
+        fake_crawl_html_pages,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.crawler.fetch_html",
+        lambda _url, _allowed_domains: source_html,
+    )
+
+    pages = crawl_pages_with_content(
+        start_url=source_url,
+        config=config,
+    )
+
+    assert pages[0].html == source_html

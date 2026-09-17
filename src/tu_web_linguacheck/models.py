@@ -28,6 +28,7 @@ class CrawledPage:
     title: str
     text: str
     blocks: tuple[TextBlock, ...] = ()
+    html: str = ""
 
 
 # pylint: disable=too-few-public-methods

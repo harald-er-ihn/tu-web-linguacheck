@@ -197,7 +197,7 @@ def crawl_pages_with_content(
     on_error: Callable[[CrawlCandidate, Exception], None] | None = None,
 ) -> list[CrawledPage]:
     """Crawlt Seiten und gibt ihre einmalig extrahierten Inhalte zurück."""
-    extracted_content: dict[str, tuple[str, str, tuple[TextBlock, ...]]] = {}
+    extracted_content: dict[str, tuple[str, str, tuple[TextBlock, ...], str]] = {}
 
     def fetch_page(url: str) -> str:
         html = fetch_html(url, config.allowed_domains)
@@ -206,6 +206,7 @@ def crawl_pages_with_content(
             page_content.title,
             page_content.text,
             page_content.blocks,
+            html,
         )
         return html
 
@@ -227,6 +228,7 @@ def crawl_pages_with_content(
             title=extracted_content[candidate.url][0],
             text=extracted_content[candidate.url][1],
             blocks=extracted_content[candidate.url][2],
+            html=extracted_content[candidate.url][3],
         )
         for candidate in candidates
     ]
