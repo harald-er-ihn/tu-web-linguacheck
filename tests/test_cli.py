@@ -1281,3 +1281,92 @@ def test_check_url_forwards_stay_under_start_path(monkeypatch, tmp_path) -> None
 
     assert result.exit_code == 0
     assert captured_options == [True]
+
+
+def test_check_translation_crawl_checks_translation_targets_outside_german_path(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Der Übersetzungs-Crawl begrenzt nur deutsche Crawl-URLs auf den Startpfad."""
+    config_path = tmp_path / "config.yaml"
+    terminology_path = tmp_path / "terminology.json"
+    terminology_path.write_text(
+        '{"schema_version": 1, "entries": []}',
+        encoding="utf-8",
+    )
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=1,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+        check={"english_terminology_path": terminology_path},
+    )
+    source_url = "https://example.org/schuds/"
+    target_url = "https://example.org/en/schuds/"
+    captured_crawl_options: list[bool] = []
+    fetched_urls: list[str] = []
+
+    def fake_crawl_pages_with_content(**kwargs):
+        captured_crawl_options.append(kwargs["stay_under_start_path"])
+        return [
+            CrawledPage(
+                url=source_url,
+                depth=0,
+                title="Deutsch",
+                text="Hochschule",
+                html="<html></html>",
+            )
+        ]
+
+    def fake_fetch_html(url: str, _allowed_domains: list[str]) -> str:
+        fetched_urls.append(url)
+        return "english-html"
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda _path: config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.crawl_pages_with_content",
+        fake_crawl_pages_with_content,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.find_allowed_page_language_links",
+        lambda *_args: [LanguageLink(target_url, "en", "hreflang")],
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        fake_fetch_html,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.extract_page_content",
+        lambda _html: PageContent(title="English", text="University"),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli._check_translation_page_contents",
+        lambda *_args: ([], 0),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.find_missing_english_translations",
+        lambda *_args: [],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-translation-crawl",
+            source_url,
+            str(config_path),
+            "--stay-under-start-path",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured_crawl_options == [True]
+    assert fetched_urls == [target_url]
+    assert "Gecrawlte deutsche Seiten: 1" in result.output
+    assert "Geprüfte englische Übersetzungen: 1" in result.output

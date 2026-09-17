@@ -739,6 +739,144 @@ def _find_translation_url(
     return translation_links[0].href if translation_links else None
 
 
+def _check_translation_crawl_page(
+    *,
+    german_page,
+    config: ProjectConfig,
+    english_terminology_entries: tuple,
+) -> tuple[list[Finding], int, str | None]:
+    """Prüft eine deutsche Crawl-Seite gegen ihre englische Sprachversion."""
+    english_url = _find_translation_url(
+        source_url=german_page.url,
+        source_html=german_page.html,
+        allowed_domains=config.crawl.allowed_domains,
+        stay_under_start_path=False,
+    )
+    if english_url is None:
+        return [], 0, None
+
+    english_html = fetch_html(english_url, config.crawl.allowed_domains)
+    english_content = extract_page_content(english_html)
+    german_content = PageContent(
+        title=german_page.title,
+        text=german_page.text,
+        blocks=german_page.blocks,
+    )
+    findings, checked_blocks = _check_translation_page_contents(
+        german_content,
+        english_content,
+        german_page.url,
+        english_url,
+        config,
+    )
+    findings.extend(
+        finding_from_missing_english_translation(
+            match,
+            occurrence_count=german_content.text.casefold().count(
+                match.matched_text.casefold()
+            ),
+            source_url=german_page.url,
+            target_url=english_url,
+            source_context=german_content.text,
+            target_context=_target_context_for_source_offset(
+                german_content.blocks,
+                english_content.blocks,
+                match.offset,
+            ),
+            profile=config.profile,
+        )
+        for match in find_missing_english_translations(
+            german_content.text,
+            english_content.text,
+            english_terminology_entries,
+        )
+    )
+
+    return findings, checked_blocks, english_url
+
+
+@app.command()
+def check_translation_crawl(
+    url: str,
+    config_path: Path,
+    stay_under_start_path: bool = typer.Option(
+        False,
+        "--stay-under-start-path",
+        help="Beschränkt den deutschen Crawl auf den Startpfad und dessen Unterpfade.",
+    ),
+    report_path: Path | None = typer.Option(
+        None,
+        "--report",
+        help="Schreibt einen HTML-Bericht in die angegebene Datei.",
+    ),
+    pdf_report_path: Path | None = typer.Option(
+        None,
+        "--pdf-report",
+        help="Schreibt einen PDF-Bericht in die angegebene Datei.",
+    ),
+) -> None:
+    """Crawlt deutsche Seiten und prüft ihre englischen Sprachversionen."""
+    config = load_project_config(config_path)
+
+    if config.check.english_terminology_path is None:
+        typer.echo("Für den Übersetzungscheck fehlt english_terminology_path.")
+        raise typer.Exit(code=1)
+
+    pages = crawl_pages_with_content(
+        start_url=url,
+        config=config.crawl,
+        stay_under_start_path=stay_under_start_path,
+        on_progress=lambda number, candidate: typer.echo(
+            f"Crawle deutsche Seite {number}/{config.crawl.max_pages}: {candidate.url}"
+        ),
+        on_error=lambda candidate, error: typer.echo(
+            f"Überspringe deutsche Seite wegen Abruffehler: {candidate.url} ({error})"
+        ),
+    )
+    findings: list[Finding] = []
+    checked_blocks = 0
+    checked_urls: list[str] = []
+    english_terminology_entries = _load_english_terminology(config)
+
+    for german_page in pages:
+        checked_urls.append(german_page.url)
+        page_findings, page_checked_blocks, english_url = _check_translation_crawl_page(
+            german_page=german_page,
+            config=config,
+            english_terminology_entries=english_terminology_entries,
+        )
+        if english_url is None:
+            typer.echo(
+                f"Keine erlaubte englische Übersetzungs-URL gefunden: {german_page.url}"
+            )
+            continue
+
+        findings.extend(page_findings)
+        checked_blocks += page_checked_blocks
+        checked_urls.append(english_url)
+
+    typer.echo(f"Gecrawlte deutsche Seiten: {len(pages)}")
+    typer.echo(f"Geprüfte englische Übersetzungen: {len(checked_urls) - len(pages)}")
+    typer.echo(f"Prüfblöcke: {checked_blocks}")
+    _display_findings(findings)
+
+    _write_reports(
+        report_path=report_path,
+        pdf_report_path=pdf_report_path,
+        report_data=_ReportData(
+            crawled_pages=len(checked_urls),
+            checked_blocks=checked_blocks,
+            findings=findings,
+            context=ReportContext(
+                start_url=url,
+                profile=config.profile,
+                language="de-DE → en-US",
+                checked_urls=tuple(checked_urls),
+            ),
+        ),
+    )
+
+
 @app.command()
 def check_translation(
     url: str,
