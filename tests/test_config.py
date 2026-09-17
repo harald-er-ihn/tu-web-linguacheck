@@ -281,6 +281,9 @@ def test_check_config_accepts_german_and_english_terminology_paths() -> None:
                 "language": "de-DE",
                 "german_terminology_path": "data/tu-de-terminology.local.json",
                 "english_terminology_path": "data/tu-terminology.local.json",
+                "additional_english_terminology_paths": [
+                    "data/cfv-terminology.local.json"
+                ],
             },
         }
     )
@@ -291,6 +294,9 @@ def test_check_config_accepts_german_and_english_terminology_paths() -> None:
     assert config.check.english_terminology_path == Path(
         "data/tu-terminology.local.json"
     )
+    assert config.check.additional_english_terminology_paths == [
+        Path("data/cfv-terminology.local.json")
+    ]
 
 
 def test_load_project_config_resolves_relative_tu_terminology_paths(
@@ -313,6 +319,8 @@ crawl:
 check:
   german_terminology_path: ../data/tu-de-terminology.local.json
   english_terminology_path: ../data/tu-terminology.local.json
+  additional_english_terminology_paths:
+    - ../data/cfv-terminology.local.json
 """,
         encoding="utf-8",
     )
@@ -325,6 +333,9 @@ check:
     assert config.check.english_terminology_path == (
         tmp_path / "data/tu-terminology.local.json"
     )
+    assert config.check.additional_english_terminology_paths == [
+        tmp_path / "data/cfv-terminology.local.json"
+    ]
 
 
 def test_combined_example_configuration_is_valid_and_uses_relative_paths() -> None:

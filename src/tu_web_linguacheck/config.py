@@ -33,6 +33,7 @@ class CheckConfig(BaseModel):
     terminology_path: Path | None = None
     german_terminology_path: Path | None = None
     english_terminology_path: Path | None = None
+    additional_english_terminology_paths: list[Path] = Field(default_factory=list)
 
 
 class ProjectConfig(BaseModel):
@@ -62,5 +63,11 @@ def load_project_config(path: Path) -> ProjectConfig:
                 terminology_path_name,
                 (path.parent / terminology_path).resolve(),
             )
+    config.check.additional_english_terminology_paths = [
+        (path.parent / terminology_path).resolve()
+        if not terminology_path.is_absolute()
+        else terminology_path
+        for terminology_path in config.check.additional_english_terminology_paths
+    ]
 
     return config
