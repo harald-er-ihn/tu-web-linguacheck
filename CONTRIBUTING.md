@@ -18,6 +18,16 @@ Website-Inhalte, Crawl-Daten, Prüfergebnisse und Projektinhalte dürfen nicht a
 externe Cloud-KI- oder Sprachprüfungs-APIs übertragen werden. Die Sprachprüfung
 soll ausschließlich über lokale Komponenten erfolgen.
 
+## Entwicklungsumgebung
+
+Erstelle und aktiviere eine virtuelle Python-Umgebung wie in der
+[WSL2-Installationsanleitung](docs/installation-wsl2.md). Installiere für die
+Mitarbeit anschließend das Projekt mit den Entwicklungsabhängigkeiten:
+
+```bash
+python -m pip install ".[dev]"
+```
+
 ## Codequalität
 
 Vor jedem Commit führe den vollständigen Qualitätslauf aus:
