@@ -211,7 +211,7 @@ def test_check_raises_clear_error_when_local_server_times_out(
 
     with pytest.raises(
         LanguageToolUnavailableError,
-        match=r"127\.0\.0\.1:8081",
+        match=r"hat nicht innerhalb von 10 Sekunden geantwortet",
     ):
         LanguageToolClient().check(
             text="Ein selbst erzeugter Test.",

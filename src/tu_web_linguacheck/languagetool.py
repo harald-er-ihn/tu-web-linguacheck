@@ -63,7 +63,12 @@ class LanguageToolClient:
         try:
             with urlopen(request, timeout=DEFAULT_TIMEOUT_SECONDS) as response:
                 payload: dict[str, Any] = json.loads(response.read().decode("utf-8"))
-        except (TimeoutError, URLError) as error:
+        except TimeoutError as error:
+            raise LanguageToolUnavailableError(
+                "Der lokale LanguageTool-Server unter 127.0.0.1:8081 hat nicht "
+                "innerhalb von 10 Sekunden geantwortet."
+            ) from error
+        except URLError as error:
             raise LanguageToolUnavailableError(
                 "Der lokale LanguageTool-Server unter 127.0.0.1:8081 ist "
                 "nicht erreichbar."
