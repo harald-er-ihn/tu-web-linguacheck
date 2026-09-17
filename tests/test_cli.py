@@ -2,6 +2,7 @@
 
 # pylint: disable=duplicate-code,too-many-lines
 from pathlib import Path
+from urllib.error import HTTPError
 
 from typer.testing import CliRunner
 
@@ -1370,3 +1371,100 @@ def test_check_translation_crawl_checks_translation_targets_outside_german_path(
     assert fetched_urls == [target_url]
     assert "Gecrawlte deutsche Seiten: 1" in result.output
     assert "Geprüfte englische Übersetzungen: 1" in result.output
+
+
+def test_check_translation_crawl_continues_after_english_fetch_error(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Der Übersetzungs-Crawl überspringt fehlerhafte englische Zielseiten."""
+    config_path = tmp_path / "config.yaml"
+    terminology_path = tmp_path / "terminology.json"
+    terminology_path.write_text(
+        '{"schema_version": 1, "entries": []}',
+        encoding="utf-8",
+    )
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=1,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+        check={"english_terminology_path": terminology_path},
+    )
+    first_source_url = "https://example.org/schuds/fehlerhaft/"
+    second_source_url = "https://example.org/schuds/erfolgreich/"
+    failing_target_url = "https://example.org/en/schuds/failing/"
+    working_target_url = "https://example.org/en/schuds/working/"
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda _path: config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.crawl_pages_with_content",
+        lambda **_kwargs: [
+            CrawledPage(
+                url=first_source_url,
+                depth=0,
+                title="Fehlerhaft",
+                text="Erster Text",
+                html="first-html",
+            ),
+            CrawledPage(
+                url=second_source_url,
+                depth=0,
+                title="Erfolgreich",
+                text="Zweiter Text",
+                html="second-html",
+            ),
+        ],
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.find_allowed_page_language_links",
+        lambda _url, html, _domains: [
+            LanguageLink(
+                failing_target_url if html == "first-html" else working_target_url,
+                "en",
+                "hreflang",
+            )
+        ],
+    )
+
+    def fake_fetch_html(url: str, _allowed_domains: list[str]) -> str:
+        if url == failing_target_url:
+            raise HTTPError(url, 500, "Internal Server Error", None, None)
+        return "working-english-html"
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        fake_fetch_html,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.extract_page_content",
+        lambda _html: PageContent(title="English", text="English text"),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli._check_translation_page_contents",
+        lambda *_args: ([], 0),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.find_missing_english_translations",
+        lambda *_args: [],
+    )
+
+    result = runner.invoke(
+        app,
+        ["check-translation-crawl", "https://example.org/schuds/", str(config_path)],
+    )
+
+    assert result.exit_code == 0
+    assert (
+        "Überspringe englische Übersetzung wegen Abruffehler: "
+        f"{failing_target_url} (HTTP Error 500: Internal Server Error)"
+    ) in result.output
+    assert "Geprüfte englische Übersetzungen: 1" in result.output
+    assert "Traceback" not in result.output

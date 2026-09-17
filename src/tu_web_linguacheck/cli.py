@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.error import URLError
 
 import typer
 from pydantic import ValidationError
@@ -739,12 +740,22 @@ def _find_translation_url(
     return translation_links[0].href if translation_links else None
 
 
+@dataclass(frozen=True)
+class _TranslationCrawlPageResult:
+    """Ergebnis der Übersetzungsprüfung einer deutschen Crawl-Seite."""
+
+    findings: list[Finding]
+    checked_blocks: int
+    english_url: str | None
+    fetch_error: Exception | None = None
+
+
 def _check_translation_crawl_page(
     *,
     german_page,
     config: ProjectConfig,
     english_terminology_entries: tuple,
-) -> tuple[list[Finding], int, str | None]:
+) -> _TranslationCrawlPageResult:
     """Prüft eine deutsche Crawl-Seite gegen ihre englische Sprachversion."""
     english_url = _find_translation_url(
         source_url=german_page.url,
@@ -753,9 +764,12 @@ def _check_translation_crawl_page(
         stay_under_start_path=False,
     )
     if english_url is None:
-        return [], 0, None
+        return _TranslationCrawlPageResult([], 0, None)
 
-    english_html = fetch_html(english_url, config.crawl.allowed_domains)
+    try:
+        english_html = fetch_html(english_url, config.crawl.allowed_domains)
+    except (TimeoutError, URLError) as error:
+        return _TranslationCrawlPageResult([], 0, english_url, error)
     english_content = extract_page_content(english_html)
     german_content = PageContent(
         title=german_page.title,
@@ -792,7 +806,11 @@ def _check_translation_crawl_page(
         )
     )
 
-    return findings, checked_blocks, english_url
+    return _TranslationCrawlPageResult(
+        findings,
+        checked_blocks,
+        english_url,
+    )
 
 
 @app.command()
@@ -840,20 +858,26 @@ def check_translation_crawl(
 
     for german_page in pages:
         checked_urls.append(german_page.url)
-        page_findings, page_checked_blocks, english_url = _check_translation_crawl_page(
+        page_result = _check_translation_crawl_page(
             german_page=german_page,
             config=config,
             english_terminology_entries=english_terminology_entries,
         )
-        if english_url is None:
+        if page_result.fetch_error is not None:
+            typer.echo(
+                "Überspringe englische Übersetzung wegen Abruffehler: "
+                f"{page_result.english_url} ({page_result.fetch_error})"
+            )
+            continue
+        if page_result.english_url is None:
             typer.echo(
                 f"Keine erlaubte englische Übersetzungs-URL gefunden: {german_page.url}"
             )
             continue
 
-        findings.extend(page_findings)
-        checked_blocks += page_checked_blocks
-        checked_urls.append(english_url)
+        findings.extend(page_result.findings)
+        checked_blocks += page_result.checked_blocks
+        checked_urls.append(page_result.english_url)
 
     typer.echo(f"Gecrawlte deutsche Seiten: {len(pages)}")
     typer.echo(f"Geprüfte englische Übersetzungen: {len(checked_urls) - len(pages)}")
