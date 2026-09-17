@@ -563,3 +563,29 @@ def test_write_html_report_shows_source_and_target_context_for_translation(
     assert "Vorkommen im Quelltext: 3" in html
     assert "<mark>Dortmund University of Technology</mark>" not in html
     assert "<td>" + chr(92) + "\n" not in html
+
+
+def test_write_html_report_includes_installation_information(tmp_path) -> None:
+    """Der Bericht verweist auf die öffentliche WSL2-Installationsanleitung."""
+    report_path = tmp_path / "report.html"
+
+    write_html_report(
+        report_path,
+        crawled_pages=1,
+        checked_blocks=1,
+        findings=[],
+        context=ReportContext(
+            start_url="https://example.org/",
+            profile="generic-de",
+            language="de-DE",
+        ),
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert "<h2>Installation</h2>" in html
+    assert "Das freie Werkzeug kann lokal selbst installiert werden." in html
+    assert (
+        'href="https://github.com/harald-er-ihn/tu-web-linguacheck/'
+        'blob/main/docs/installation-wsl2.md"'
+    ) in html

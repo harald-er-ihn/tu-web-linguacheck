@@ -83,3 +83,10 @@ nutzt keine externen Cloud-KI- oder Sprachprüfungs-APIs.
 TU-spezifische Regeln werden nachvollziehbar über Quellen-IDs dokumentiert.
 Zugriffsgeschützte, interne oder in der Weitergabe ungeklärte
 Originaldokumente werden nicht in das öffentliche Projekt aufgenommen.
+
+## Installation
+
+Das freie Werkzeug kann lokal selbst installiert werden. Eine Anleitung für
+Windows mit WSL2 ist im
+[öffentlichen Repository](https://github.com/harald-er-ihn/tu-web-linguacheck/blob/main/docs/installation-wsl2.md)
+verfügbar.
