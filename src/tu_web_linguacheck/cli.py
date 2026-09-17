@@ -241,6 +241,11 @@ def check_text(
 def check_url(
     url: str,
     config_path: Path,
+    stay_under_start_path: bool = typer.Option(
+        False,
+        "--stay-under-start-path",
+        help="Beschränkt Redirects auf den Startpfad und dessen Unterpfade.",
+    ),
     report_path: Path | None = typer.Option(
         None, "--report", help="Schreibt einen HTML-Bericht in die angegebene Datei."
     ),
@@ -256,7 +261,12 @@ def check_url(
         typer.echo("URL ist gemäß Crawl-Konfiguration nicht erlaubt.")
         raise typer.Exit(code=1)
 
-    html = fetch_html(prepared_url, config.crawl.allowed_domains)
+    fetch_options = {"stay_under_start_path": True} if stay_under_start_path else {}
+    html = fetch_html(
+        prepared_url,
+        config.crawl.allowed_domains,
+        **fetch_options,
+    )
     page_content = extract_page_content(html)
 
     typer.echo(f"URL: {prepared_url}")

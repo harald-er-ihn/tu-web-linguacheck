@@ -7,7 +7,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPSHandler, OpenerDirector, Request, build_opener
 
-from tu_web_linguacheck.urls import is_allowed_url
+from tu_web_linguacheck.urls import is_allowed_url, is_url_under_start_path
 
 _USER_AGENT = "tu-web-linguacheck/0.1"
 _DEFAULT_TIMEOUT_SECONDS = 15
@@ -56,12 +56,27 @@ def _load_robots(
     return robots
 
 
+def _validate_final_url(
+    final_url: str,
+    *,
+    requested_url: str,
+    allowed_domains: Sequence[str],
+    stay_under_start_path: bool,
+) -> None:
+    """Prüft die finale URL nach einer Weiterleitung."""
+    if not is_allowed_url(final_url, allowed_domains):
+        raise ValueError(f"Weiterleitung zu nicht erlaubter URL: {final_url}")
+    if stay_under_start_path and not is_url_under_start_path(final_url, requested_url):
+        raise ValueError(f"Weiterleitung verlässt den Startpfad: {final_url}")
+
+
 def _fetch_document(
     url: str,
     allowed_domains: Sequence[str],
     *,
     document_name: str,
     accepts_content_type: Callable[[str], bool],
+    stay_under_start_path: bool = False,
 ) -> str:
     """Ruft ein erlaubtes, per robots.txt erlaubtes Dokument sicher ab."""
     if not is_allowed_url(url, allowed_domains):
@@ -78,10 +93,12 @@ def _fetch_document(
     request = Request(url, headers={"User-Agent": _USER_AGENT})
 
     with opener.open(request, timeout=_DEFAULT_TIMEOUT_SECONDS) as response:
-        final_url = response.geturl()
-
-        if not is_allowed_url(final_url, allowed_domains):
-            raise ValueError(f"Weiterleitung zu nicht erlaubter URL: {final_url}")
+        _validate_final_url(
+            response.geturl(),
+            requested_url=url,
+            allowed_domains=allowed_domains,
+            stay_under_start_path=stay_under_start_path,
+        )
 
         content_type = response.headers.get("Content-Type", "")
 
@@ -106,13 +123,19 @@ def _fetch_document(
     return document_bytes.decode(charset, errors="replace")
 
 
-def fetch_html(url: str, allowed_domains: Sequence[str]) -> str:
+def fetch_html(
+    url: str,
+    allowed_domains: Sequence[str],
+    *,
+    stay_under_start_path: bool = False,
+) -> str:
     """Ruft eine erlaubte, per robots.txt erlaubte HTML-Seite lokal ab."""
     return _fetch_document(
         url,
         allowed_domains,
         document_name="HTML",
         accepts_content_type=is_html_content_type,
+        stay_under_start_path=stay_under_start_path,
     )
 
 

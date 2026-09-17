@@ -184,3 +184,37 @@ def test_fetch_html_does_not_fetch_document_when_robots_request_fails(
         )
 
     assert requested_urls == ["https://www.tu-dortmund.de/robots.txt"]
+
+
+def test_fetch_html_rejects_redirect_outside_start_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ein begrenzter Abruf lehnt Redirects außerhalb des Startpfads ab."""
+
+    class RedirectingOpener:  # pylint: disable=too-few-public-methods
+        """Opener mit erlaubter robots.txt und Redirect-Antwort."""
+
+        def open(self, request: object, *, timeout: int) -> _FakeResponse:
+            """Liefert robots.txt oder die finale Redirect-Antwort."""
+            assert timeout == 15
+            if request.full_url.endswith("/robots.txt"):
+                return _FakeResponse(
+                    request.full_url,
+                    b"User-agent: *\nAllow: /\n",
+                    "text/plain",
+                )
+            return _FakeResponse(
+                "https://example.org/ausserhalb/",
+                b"<html><body>Inhalt</body></html>",
+                "text/html",
+            )
+
+    opener = RedirectingOpener()
+    monkeypatch.setattr(http, "_build_http_opener", lambda: opener)
+
+    with pytest.raises(ValueError, match="Startpfad"):
+        fetch_html(
+            "https://example.org/start/pfad/",
+            allowed_domains=["example.org"],
+            stay_under_start_path=True,
+        )

@@ -1222,3 +1222,62 @@ def test_check_translation_rejects_target_outside_start_path(
     assert result.exit_code == 1
     assert "Keine erlaubte englische Übersetzungs-URL gefunden." in result.output
     assert fetched_urls == [source_url]
+
+
+def test_check_url_forwards_stay_under_start_path(monkeypatch, tmp_path) -> None:
+    """Der Einzelurl-Check leitet die Startpfadbegrenzung an den Abruf weiter."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="generic-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=0,
+            max_pages=1,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+    captured_options: list[bool] = []
+
+    def fake_fetch_html(
+        _url: str,
+        _allowed_domains: list[str],
+        *,
+        stay_under_start_path: bool = False,
+    ) -> str:
+        captured_options.append(stay_under_start_path)
+        return "<html></html>"
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda _path: config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.prepare_crawl_url",
+        lambda url, _crawl_config: url,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        fake_fetch_html,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.extract_page_content",
+        lambda _html: PageContent(title="Testseite", text="Testinhalt"),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        lambda _self, **_kwargs: [],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-url",
+            "https://example.org/start/pfad/",
+            str(config_path),
+            "--stay-under-start-path",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured_options == [True]
