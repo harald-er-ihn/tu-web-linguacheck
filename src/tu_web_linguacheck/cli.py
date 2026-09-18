@@ -38,6 +38,7 @@ from tu_web_linguacheck.terminology import (
     find_terminology_matches,
     load_terminology,
 )
+from tu_web_linguacheck.text_batches import batch_page_blocks
 from tu_web_linguacheck.urls import is_url_under_start_path, prepare_crawl_url
 
 app = typer.Typer(
@@ -418,24 +419,14 @@ def _check_page_blocks(
     disabled_rule_ids: Sequence[str] = (),
     ignored_terms: Sequence[str] = (),
 ) -> tuple[list[Finding], int]:
-    """Prüft Textblöcke mit ihrer HTML-Sprache und globalen Offsets."""
+    """Prüft gleichsprachige Textblöcke gebündelt mit globalen Offsets."""
     findings: list[Finding] = []
     context = "\n".join(block.text for block in blocks)
-    block_offset = 0
 
-    for block in blocks:
-        configured_primary_language = language.split("-", maxsplit=1)[0]
-        block_language = (
-            language
-            if block.language is None
-            or block.language.casefold() == configured_primary_language.casefold()
-            else "en-US"
-            if block.language.casefold() == "en"
-            else block.language
-        )
-        block_findings = _check_text_findings(
-            block.text,
-            language=block_language,
+    for batch_text, batch_language, batch_offset in batch_page_blocks(blocks, language):
+        batch_findings = _check_text_findings(
+            batch_text,
+            language=batch_language,
             url=url,
             profile=profile,
             disabled_rule_ids=disabled_rule_ids,
@@ -443,14 +434,10 @@ def _check_page_blocks(
         )
         findings.extend(
             finding.model_copy(
-                update={
-                    "context": context,
-                    "offset": finding.offset + block_offset,
-                }
+                update={"context": context, "offset": finding.offset + batch_offset}
             )
-            for finding in block_findings
+            for finding in batch_findings
         )
-        block_offset += len(block.text) + 1
 
     return findings, len(blocks)
 

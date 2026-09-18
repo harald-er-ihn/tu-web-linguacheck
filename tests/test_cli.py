@@ -64,6 +64,57 @@ def test_check_page_text_checks_blocks_with_global_offsets(monkeypatch) -> None:
     assert findings[0].context == text
 
 
+def test_check_page_blocks_batches_consecutive_blocks_of_same_language(
+    monkeypatch,
+) -> None:
+    """Die Seitenprüfung bündelt aufeinanderfolgende Blöcke derselben Sprache."""
+    checked_texts: list[tuple[str, str]] = []
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        checked_texts.append((text, language))
+
+        if text == "Überschrift\nDas istf ein Test.":
+            return [
+                LanguageToolMatch(
+                    message="Testmeldung.",
+                    offset=16,
+                    length=4,
+                    rule_id="TEST_RULE",
+                    category="TEST",
+                    issue_type="misspelling",
+                    replacements=("ist",),
+                )
+            ]
+
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        fake_check,
+    )
+
+    blocks = (
+        TextBlock(text="Überschrift", language="de"),
+        TextBlock(text="Das istf ein Test.", language="de"),
+        TextBlock(text="English text.", language="en"),
+    )
+    findings, checked_blocks = _check_page_blocks(
+        blocks,
+        language="de-DE",
+        url="https://example.org/startseite/",
+        profile="generic-de",
+    )
+
+    assert checked_texts == [
+        ("Überschrift\nDas istf ein Test.", "de-DE"),
+        ("English text.", "en-US"),
+    ]
+    assert checked_blocks == 3
+    assert len(findings) == 1
+    assert findings[0].offset == 16
+    assert findings[0].context == "Überschrift\nDas istf ein Test.\nEnglish text."
+
+
 def test_help_displays_project_name_and_run_command() -> None:
     """Die CLI-Hilfe nennt den Projektnamen und den Platzhalterbefehl."""
     result = runner.invoke(app, ["--help"])
@@ -928,8 +979,7 @@ def test_check_page_blocks_uses_en_us_for_english_html_blocks(
     assert checked_blocks == 3
     assert checked_languages == [
         ("Deutscher Text.", "de-DE"),
-        ("English text.", "en-US"),
-        ("American English text.", "en-US"),
+        ("English text.\nAmerican English text.", "en-US"),
     ]
 
 
