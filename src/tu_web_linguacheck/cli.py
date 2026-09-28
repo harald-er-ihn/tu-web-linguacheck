@@ -29,7 +29,7 @@ from tu_web_linguacheck.languagetool import (
     LanguageToolClient,
     LanguageToolUnavailableError,
 )
-from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.models import CrawledPage, Finding
 from tu_web_linguacheck.page_checking import (
     _check_page_blocks,
     _check_page_text,
@@ -171,6 +171,15 @@ def _display_findings(findings: Sequence[Finding]) -> None:
             context = f"{context}…"
 
         typer.echo(f"Kontext: {context}")
+
+
+def _ensure_languagetool_available(language: str) -> None:
+    """Prüft, ob der lokale LanguageTool-Server erreichbar ist."""
+    try:
+        LanguageToolClient().check(text="", language=language)
+    except LanguageToolUnavailableError as error:
+        typer.echo(str(error))
+        raise typer.Exit(code=1) from error
 
 
 @app.command()
@@ -407,6 +416,76 @@ def _write_reports(
         typer.echo(f"PDF-Bericht: {pdf_report_path}")
 
 
+def _check_crawled_page(
+    page: CrawledPage,
+    *,
+    config: ProjectConfig,
+    terminology_entries: tuple[TerminologyEntry, ...] | None,
+) -> tuple[list[Finding], int]:
+    """Prüft eine gecrawlte Seite und ergänzt lokale Terminologiefunde."""
+    if page.blocks:
+        findings, checked_blocks = _check_page_blocks(
+            page.blocks,
+            language=config.check.language,
+            url=page.url,
+            profile=config.profile,
+            disabled_rule_ids=config.check.ignored_rule_ids,
+            ignored_terms=config.check.ignored_terms,
+        )
+    else:
+        findings, checked_blocks = _check_page_text(
+            page.text,
+            language=config.check.language,
+            url=page.url,
+            profile=config.profile,
+            disabled_rule_ids=config.check.ignored_rule_ids,
+            ignored_terms=config.check.ignored_terms,
+        )
+
+    if terminology_entries is not None:
+        findings.extend(
+            finding_from_terminology_match(
+                match,
+                url=page.url,
+                context=page.text,
+                profile=config.profile,
+            )
+            for match in find_terminology_matches(page.text, terminology_entries)
+        )
+
+    return findings, checked_blocks
+
+
+def _check_crawled_pages(
+    pages: Sequence[CrawledPage],
+    *,
+    config: ProjectConfig,
+) -> tuple[list[Finding], int]:
+    """Prüft gecrawlte Seiten und summiert ihre Funde und Prüfblöcke."""
+    terminology_entries = (
+        load_terminology(config.check.terminology_path)
+        if config.check.terminology_path is not None
+        else None
+    )
+    findings: list[Finding] = []
+    checked_blocks = 0
+
+    try:
+        for page in pages:
+            page_findings, page_checked_blocks = _check_crawled_page(
+                page,
+                config=config,
+                terminology_entries=terminology_entries,
+            )
+            findings.extend(page_findings)
+            checked_blocks += page_checked_blocks
+    except LanguageToolUnavailableError as error:
+        typer.echo(str(error))
+        raise typer.Exit(code=1) from error
+
+    return findings, checked_blocks
+
+
 @app.command()
 def check_crawl(
     url: str,
@@ -430,14 +509,7 @@ def check_crawl(
     """Crawlt erlaubte HTML-Seiten und prüft ihre sichtbaren Texte lokal."""
     config = load_project_config(config_path)
 
-    try:
-        LanguageToolClient().check(
-            text="",
-            language=config.check.language,
-        )
-    except LanguageToolUnavailableError as error:
-        typer.echo(str(error))
-        raise typer.Exit(code=1) from error
+    _ensure_languagetool_available(config.check.language)
 
     pages = crawl_pages_with_content(
         start_url=url,
@@ -450,52 +522,7 @@ def check_crawl(
             f"Überspringe Seite wegen Abruffehler: {candidate.url} ({error})"
         ),
     )
-    findings: list[Finding] = []
-    checked_blocks = 0
-
-    terminology_entries = None
-    if config.check.terminology_path is not None:
-        terminology_entries = load_terminology(config.check.terminology_path)
-
-    try:
-        for page in pages:
-            if page.blocks:
-                page_findings, page_checked_blocks = _check_page_blocks(
-                    page.blocks,
-                    language=config.check.language,
-                    url=page.url,
-                    profile=config.profile,
-                    disabled_rule_ids=config.check.ignored_rule_ids,
-                    ignored_terms=config.check.ignored_terms,
-                )
-            else:
-                page_findings, page_checked_blocks = _check_page_text(
-                    page.text,
-                    language=config.check.language,
-                    url=page.url,
-                    profile=config.profile,
-                    disabled_rule_ids=config.check.ignored_rule_ids,
-                    ignored_terms=config.check.ignored_terms,
-                )
-            if terminology_entries is not None:
-                findings.extend(
-                    finding_from_terminology_match(
-                        match,
-                        url=page.url,
-                        context=page.text,
-                        profile=config.profile,
-                    )
-                    for match in find_terminology_matches(
-                        page.text,
-                        terminology_entries,
-                    )
-                )
-            findings.extend(page_findings)
-            checked_blocks += page_checked_blocks
-    except LanguageToolUnavailableError as error:
-        typer.echo(str(error))
-        raise typer.Exit(code=1) from error
-
+    findings, checked_blocks = _check_crawled_pages(pages, config=config)
     typer.echo(f"Gecrawlte Seiten: {len(pages)}")
     typer.echo(f"Prüfblöcke: {checked_blocks}")
     _display_findings(findings)
