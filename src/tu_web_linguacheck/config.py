@@ -33,6 +33,7 @@ class CheckConfig(BaseModel):
     terminology_path: Path | None = None
     german_terminology_path: Path | None = None
     english_terminology_path: Path | None = None
+    cfv_english_terminology_path: Path | None = None
     additional_english_terminology_paths: list[Path] = Field(default_factory=list)
 
 
@@ -54,6 +55,7 @@ def load_project_config(path: Path) -> ProjectConfig:
     for terminology_path_name in (
         "terminology_path",
         "german_terminology_path",
+        "cfv_english_terminology_path",
         "english_terminology_path",
     ):
         terminology_path = getattr(config.check, terminology_path_name)

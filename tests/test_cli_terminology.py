@@ -367,7 +367,7 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
         check={
             "language": "de-DE",
             "english_terminology_path": terminology_path,
-            "additional_english_terminology_paths": [cfv_terminology_path],
+            "cfv_english_terminology_path": cfv_terminology_path,
         },
     )
     source_url = "https://example.org/de/testseite/"
@@ -479,6 +479,24 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
         ).target_context
         == "Dortmund University of Technology provides an escort service."
     )
+    report_context = written_pdf_reports[0][1]["context"]
+    assert report_context.is_translation_check is True
+    assert report_context.translation_terminology_sources == (
+        ("tu-terminology.local.json", 1),
+        ("cfv-terminology.local.json", 1),
+    )
+    assert report_context.translation_uses_cfv_terminology is True
+    assert report_context.command == (
+        "tu-web-linguacheck check-translation "
+        f"{source_url} {config_path} --pdf-report {pdf_report_path}"
+    )
+    assert report_context.config_path == str(config_path)
+    assert report_context.allowed_domains == ("example.org",)
+    assert report_context.max_depth == 1
+    assert report_context.max_pages == 10
+    assert report_context.requests_per_second == 1.0
+    assert report_context.obey_robots_txt is True
+    assert report_context.stay_under_start_path is False
 
 
 def test_check_translation_applies_tu_terminology_only_to_matching_languages(
@@ -486,9 +504,13 @@ def test_check_translation_applies_tu_terminology_only_to_matching_languages(
     tmp_path,
 ) -> None:
     """Der Übersetzungscheck prüft TU-Terminologie nur in passenden Sprachblöcken."""
-    config_path = tmp_path / "config.yaml"
-    german_terminology_path = tmp_path / "tu-de-terminology.local.json"
-    english_terminology_path = tmp_path / "tu-terminology.local.json"
+    config_directory = tmp_path / "config"
+    data_directory = tmp_path / "data"
+    config_directory.mkdir()
+    data_directory.mkdir()
+    config_path = config_directory / "config.yaml"
+    german_terminology_path = data_directory / "tu-de-terminology.local.json"
+    english_terminology_path = data_directory / "tu-terminology.local.json"
     german_terminology_path.write_text(
         """\
 {
@@ -535,6 +557,8 @@ def test_check_translation_applies_tu_terminology_only_to_matching_languages(
     )
     source_url = "https://example.org/de/testseite/"
     target_url = "https://example.org/en/test-page/"
+    pdf_report_path = tmp_path / "translation-report.pdf"
+    written_pdf_reports = []
     page_content = PageContent(
         title="Testseite",
         text=(
@@ -581,13 +605,28 @@ def test_check_translation_applies_tu_terminology_only_to_matching_languages(
         "tu_web_linguacheck.cli.LanguageToolClient.check",
         lambda _self, *, text, language: [],
     )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.write_pdf_report",
+        lambda path, **kwargs: written_pdf_reports.append((path, kwargs)),
+    )
 
     result = runner.invoke(
         app,
-        ["check-translation", source_url, str(config_path)],
+        [
+            "check-translation",
+            source_url,
+            str(config_path),
+            "--pdf-report",
+            str(pdf_report_path),
+        ],
     )
 
     assert result.exit_code == 0
     assert "Sprachfunde: 4" in result.output
     assert result.output.count("Regel: TU_DE_INCLUSIVE_LANGUAGE") == 2
     assert result.output.count("Regel: TU_EN_TERMINOLOGY") == 2
+    report_context = written_pdf_reports[0][1]["context"]
+    assert report_context.translation_terminology_sources == (
+        ("tu-de-terminology.local.json", 1),
+        ("tu-terminology.local.json", 1),
+    )

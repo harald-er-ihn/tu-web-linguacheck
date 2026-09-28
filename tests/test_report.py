@@ -216,6 +216,50 @@ def test_write_html_report_shows_empty_state_without_findings(tmp_path) -> None:
     ) in html
 
 
+def test_write_html_report_shows_reproduction_data_at_document_end(tmp_path) -> None:
+    """Der Bericht zeigt Crawl-Reproduktionsdaten erst am Dokumentende."""
+    report_path = tmp_path / "crawl-report.html"
+
+    write_html_report(
+        report_path,
+        crawled_pages=1,
+        checked_blocks=3,
+        findings=[],
+        context=ReportContext(
+            start_url="https://example.org/start/",
+            profile="tu-de",
+            language="de-DE",
+            command=(
+                "tu-web-linguacheck check-crawl https://example.org/start/ "
+                "config.yaml --stay-under-start-path --report crawl-report.html"
+            ),
+            config_path="config.yaml",
+            allowed_domains=("example.org", "www.example.org"),
+            max_depth=2,
+            max_pages=50,
+            requests_per_second=1.5,
+            obey_robots_txt=True,
+            stay_under_start_path=True,
+        ),
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert '<section id="reproduction-data">' in html
+    assert "<h2>Reproduktionsdaten</h2>" in html
+    assert "Startbefehl: tu-web-linguacheck check-crawl" in html
+    assert "Konfigurationspfad: config.yaml" in html
+    assert "Erlaubte Domains: example.org, www.example.org" in html
+    assert "Maximale Tiefe: 2" in html
+    assert "Maximale Seitenzahl: 50" in html
+    assert "Anfragen pro Sekunde: 1.5" in html
+    assert "robots.txt beachten: ja" in html
+    assert "Unter Startpfad bleiben: ja" in html
+    assert html.index('<section id="report-information">') < html.index(
+        '<section id="reproduction-data">'
+    )
+
+
 def test_write_html_report_shows_escaped_check_context(tmp_path) -> None:
     """Der HTML-Bericht zeigt einen sicher escapten Prüfkontext."""
     report_path = tmp_path / "crawl-report.html"
@@ -589,3 +633,80 @@ def test_write_html_report_includes_installation_information(tmp_path) -> None:
         'href="https://github.com/harald-er-ihn/tu-web-linguacheck/'
         'blob/main/docs/installation-wsl2.md"'
     ) in html
+
+
+def test_write_html_report_shows_translation_check_information_at_document_end(
+    tmp_path,
+) -> None:
+    """Der Bericht erläutert verwendete Quellen der Übersetzungsprüfung."""
+    report_path = tmp_path / "translation-report.html"
+
+    write_html_report(
+        report_path,
+        crawled_pages=2,
+        checked_blocks=0,
+        findings=[],
+        context=ReportContext(
+            start_url="https://example.org/de/",
+            profile="tu",
+            language="de-DE → en-US",
+            command=(
+                "tu-web-linguacheck check-translation "
+                "https://example.org/de/ config.yaml"
+            ),
+            translation_terminology_sources=(
+                ("data/tu-terminology.local.json", 1200),
+                ("data/cfv-terminology.local.json", 47),
+            ),
+            is_translation_check=True,
+            translation_uses_cfv_terminology=True,
+        ),
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert '<section id="translation-check-information">' in html
+    assert "<h2>Hinweise zur Übersetzungsprüfung</h2>" in html
+    assert (
+        "Für diesen Prüflauf wurden lokale Übersetzungsterminologiequellen verwendet."
+        in html
+    )
+    assert "data/tu-terminology.local.json: 1200 Einträge" in html
+    assert "data/cfv-terminology.local.json: 47 Einträge" in html
+    assert "Insgesamt verwendete Einträge: 1247" in html
+    assert (
+        "Begleitservice wird als accompaniment service empfohlen; "
+        "escort service wird als zu prüfende Variante behandelt." in html
+    )
+    assert (
+        '<a href="https://service.tu-dortmund.de/en/group/intra/'
+        'englischer-sprachgebrauch">TU-Sprachgebrauch für englische Texte</a>' in html
+    )
+    assert html.index('<section id="reproduction-data">') < html.index(
+        '<section id="translation-check-information">'
+    )
+
+
+def test_write_html_report_omits_cfv_example_without_cfv_terminology(tmp_path) -> None:
+    """Der Übersetzungsbericht zeigt das CFV-Beispiel nur bei CFV-Quelle."""
+    report_path = tmp_path / "translation-report.html"
+
+    write_html_report(
+        report_path,
+        crawled_pages=2,
+        checked_blocks=0,
+        findings=[],
+        context=ReportContext(
+            start_url="https://example.org/de/",
+            profile="tu",
+            language="de-DE → en-US",
+            is_translation_check=True,
+            translation_terminology_sources=(("data/tu-terminology.local.json", 1200),),
+        ),
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert '<section id="translation-check-information">' in html
+    assert "data/tu-terminology.local.json: 1200 Einträge" in html
+    assert "Begleitservice wird als accompaniment service empfohlen" not in html

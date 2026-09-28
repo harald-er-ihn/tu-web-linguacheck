@@ -19,6 +19,8 @@ _REPORT_INFORMATION_PATH = (
 
 
 @dataclass(frozen=True)
+# Der Kontext bündelt die zusammengehörenden Berichtsdaten.
+# pylint: disable=too-many-instance-attributes
 class ReportContext:
     """Beschreibt den Kontext eines Sprachprüfberichts."""
 
@@ -26,6 +28,17 @@ class ReportContext:
     profile: str
     language: str
     checked_urls: Sequence[str] = ()
+    command: str | None = None
+    config_path: str | None = None
+    allowed_domains: Sequence[str] = ()
+    max_depth: int | None = None
+    max_pages: int | None = None
+    requests_per_second: float | None = None
+    obey_robots_txt: bool | None = None
+    stay_under_start_path: bool | None = None
+    is_translation_check: bool = False
+    translation_terminology_sources: Sequence[tuple[str, int]] = ()
+    translation_uses_cfv_terminology: bool = False
 
 
 def _marked_context(finding: Finding) -> str:
@@ -181,7 +194,7 @@ def _finding_sections(
     return finding_tables, table_of_contents
 
 
-def _document(
+def _document(  # pylint: disable=too-many-locals
     *,
     crawled_pages: int,
     checked_blocks: int,
@@ -225,6 +238,73 @@ def _document(
         (escape(project_metadata.name), escape(project_metadata.version))
     )
     escaped_start_url = escape(context.start_url, quote=True)
+    reproduction_data = ""
+    if context.command is not None:
+        robots_txt = "ja" if context.obey_robots_txt else "nein"
+        under_start_path = "ja" if context.stay_under_start_path else "nein"
+        allowed_domains = ", ".join(
+            escape(domain) for domain in context.allowed_domains
+        )
+        reproduction_data = f"""
+    <section id="reproduction-data">
+      <h2>Reproduktionsdaten</h2>
+      <p>Startbefehl: {escape(context.command)}</p>
+      <p>Konfigurationspfad: {escape(context.config_path or "")}</p>
+      <p>Erlaubte Domains: {allowed_domains}</p>
+      <p>Maximale Tiefe: {context.max_depth}</p>
+      <p>Maximale Seitenzahl: {context.max_pages}</p>
+      <p>Anfragen pro Sekunde: {context.requests_per_second}</p>
+      <p>robots.txt beachten: {robots_txt}</p>
+      <p>Unter Startpfad bleiben: {under_start_path}</p>
+      <p>Profil: {escape(context.profile)}</p>
+      <p>Sprache: {escape(context.language)}</p>
+    </section>"""
+
+    translation_check_information = ""
+    if context.is_translation_check:
+        terminology_sources = chr(10).join(
+            f"        <li>{escape(source_path)}: {entry_count} Einträge</li>"
+            for source_path, entry_count in context.translation_terminology_sources
+        )
+        total_entry_count = sum(
+            entry_count for _, entry_count in context.translation_terminology_sources
+        )
+        terminology_information = (
+            (
+                "<p>Für diesen Prüflauf wurden lokale "
+                "Übersetzungsterminologiequellen verwendet.</p>\n"
+                "<ul>\n"
+                f"{terminology_sources}\n"
+                "</ul>\n"
+                f"<p>Insgesamt verwendete Einträge: {total_entry_count}</p>"
+            )
+            if context.translation_terminology_sources
+            else (
+                "<p>Für diesen Prüflauf wurden keine lokalen "
+                "Übersetzungsterminologiequellen verwendet.</p>"
+            )
+        )
+        cfv_example = (
+            (
+                "<p>Begleitservice wird als accompaniment service empfohlen; "
+                "escort service wird als zu prüfende Variante behandelt.</p>"
+            )
+            if context.translation_uses_cfv_terminology
+            else ""
+        )
+        service_portal_note = (
+            "<p>Externer Hinweis im Serviceportal: "
+            '<a href="https://service.tu-dortmund.de/en/group/intra/'
+            'englischer-sprachgebrauch">'
+            "TU-Sprachgebrauch für englische Texte</a></p>"
+        )
+        translation_check_information = f"""
+    <section id="translation-check-information">
+      <h2>Hinweise zur Übersetzungsprüfung</h2>
+      {terminology_information}
+      {cfv_example}
+      {service_portal_note}
+    </section>"""
 
     return f"""\
 <!doctype html>
@@ -378,6 +458,8 @@ def _document(
     {report_information}
     <p><a href="#report-top">Nach oben</a></p>
   </section>
+    {reproduction_data}
+    {translation_check_information}
 </body>
 </html>
 """

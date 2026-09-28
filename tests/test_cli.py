@@ -6,7 +6,7 @@ from urllib.error import HTTPError
 
 from typer.testing import CliRunner
 
-from tu_web_linguacheck.cli import _check_page_blocks, _check_page_text, app
+from tu_web_linguacheck.cli import app
 from tu_web_linguacheck.config import CrawlConfig, ProjectConfig
 from tu_web_linguacheck.html_content import PageContent, TextBlock
 from tu_web_linguacheck.language_links import LanguageLink
@@ -15,6 +15,7 @@ from tu_web_linguacheck.languagetool import (
     LanguageToolUnavailableError,
 )
 from tu_web_linguacheck.models import CrawledPage, Finding
+from tu_web_linguacheck.page_checking import _check_page_blocks, _check_page_text
 from tu_web_linguacheck.project_metadata import ProjectMetadata
 from tu_web_linguacheck.report import ReportContext
 
@@ -45,7 +46,7 @@ def test_check_page_text_checks_blocks_with_global_offsets(monkeypatch) -> None:
         return []
 
     monkeypatch.setattr(
-        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        "tu_web_linguacheck.page_checking.LanguageToolClient.check",
         fake_check,
     )
 
@@ -89,7 +90,7 @@ def test_check_page_blocks_batches_consecutive_blocks_of_same_language(
         return []
 
     monkeypatch.setattr(
-        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        "tu_web_linguacheck.page_checking.LanguageToolClient.check",
         fake_check,
     )
 
@@ -960,7 +961,7 @@ def test_check_page_blocks_uses_en_us_for_english_html_blocks(
         return []
 
     monkeypatch.setattr(
-        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        "tu_web_linguacheck.page_checking.LanguageToolClient.check",
         fake_check,
     )
 
@@ -1150,10 +1151,22 @@ def test_check_crawl_writes_html_and_pdf_reports(monkeypatch, tmp_path) -> None:
                 "https://example.org/",
                 "generic-de",
                 "de-DE",
-                (
+                checked_urls=(
                     "https://example.org/erste-seite/",
                     "https://example.org/zweite-seite/",
                 ),
+                command=(
+                    "tu-web-linguacheck check-crawl https://example.org/ "
+                    f"{config_path} --report {report_path} "
+                    f"--pdf-report {pdf_report_path}"
+                ),
+                config_path=str(config_path),
+                allowed_domains=("example.org",),
+                max_depth=1,
+                max_pages=10,
+                requests_per_second=1.0,
+                obey_robots_txt=True,
+                stay_under_start_path=False,
             ),
         )
     ]
@@ -1167,10 +1180,22 @@ def test_check_crawl_writes_html_and_pdf_reports(monkeypatch, tmp_path) -> None:
                 "https://example.org/",
                 "generic-de",
                 "de-DE",
-                (
+                checked_urls=(
                     "https://example.org/erste-seite/",
                     "https://example.org/zweite-seite/",
                 ),
+                command=(
+                    "tu-web-linguacheck check-crawl https://example.org/ "
+                    f"{config_path} --report {report_path} "
+                    f"--pdf-report {pdf_report_path}"
+                ),
+                config_path=str(config_path),
+                allowed_domains=("example.org",),
+                max_depth=1,
+                max_pages=10,
+                requests_per_second=1.0,
+                obey_robots_txt=True,
+                stay_under_start_path=False,
             ),
         )
     ]
@@ -1189,7 +1214,7 @@ def test_check_page_blocks_uses_explicit_html_languages(
         return []
 
     monkeypatch.setattr(
-        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        "tu_web_linguacheck.page_checking.LanguageToolClient.check",
         fake_check,
     )
 
@@ -1359,6 +1384,8 @@ def test_check_translation_crawl_checks_translation_targets_outside_german_path(
     source_url = "https://example.org/schuds/"
     target_url = "https://example.org/en/schuds/"
     captured_crawl_options: list[bool] = []
+    pdf_report_path = tmp_path / "translation-crawl-report.pdf"
+    written_pdf_reports = []
     fetched_urls: list[str] = []
 
     def fake_crawl_pages_with_content(**kwargs):
@@ -1405,6 +1432,10 @@ def test_check_translation_crawl_checks_translation_targets_outside_german_path(
         "tu_web_linguacheck.cli.find_missing_english_translations",
         lambda *_args: [],
     )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.write_pdf_report",
+        lambda path, **kwargs: written_pdf_reports.append((path, kwargs)),
+    )
 
     result = runner.invoke(
         app,
@@ -1413,6 +1444,8 @@ def test_check_translation_crawl_checks_translation_targets_outside_german_path(
             source_url,
             str(config_path),
             "--stay-under-start-path",
+            "--pdf-report",
+            str(pdf_report_path),
         ],
     )
 
@@ -1421,6 +1454,22 @@ def test_check_translation_crawl_checks_translation_targets_outside_german_path(
     assert fetched_urls == [target_url]
     assert "Gecrawlte deutsche Seiten: 1" in result.output
     assert "Geprüfte englische Übersetzungen: 1" in result.output
+    report_context = written_pdf_reports[0][1]["context"]
+    assert report_context.is_translation_check is True
+    assert report_context.translation_terminology_sources == (("terminology.json", 0),)
+    assert report_context.translation_uses_cfv_terminology is False
+    assert report_context.command == (
+        "tu-web-linguacheck check-translation-crawl "
+        f"{source_url} {config_path} --stay-under-start-path "
+        f"--pdf-report {pdf_report_path}"
+    )
+    assert report_context.config_path == str(config_path)
+    assert report_context.allowed_domains == ("example.org",)
+    assert report_context.max_depth == 1
+    assert report_context.max_pages == 10
+    assert report_context.requests_per_second == 1.0
+    assert report_context.obey_robots_txt is True
+    assert report_context.stay_under_start_path is True
 
 
 def test_check_translation_crawl_continues_after_english_fetch_error(

@@ -1,4 +1,5 @@
 """Kommandozeilenschnittstelle für tu-web-linguacheck."""
+# pylint: disable=too-many-lines
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -11,8 +12,6 @@ from pydantic import ValidationError
 from tu_web_linguacheck.config import ProjectConfig, load_project_config
 from tu_web_linguacheck.crawler import crawl_pages_with_content
 from tu_web_linguacheck.findings import (
-    filter_ignored_terms,
-    finding_from_languagetool_match,
     finding_from_missing_english_translation,
     finding_from_terminology_match,
 )
@@ -31,14 +30,19 @@ from tu_web_linguacheck.languagetool import (
     LanguageToolUnavailableError,
 )
 from tu_web_linguacheck.models import Finding
+from tu_web_linguacheck.page_checking import (
+    _check_page_blocks,
+    _check_page_text,
+    _check_text_findings,
+)
 from tu_web_linguacheck.project_metadata import load_project_metadata
 from tu_web_linguacheck.report import ReportContext, write_html_report, write_pdf_report
 from tu_web_linguacheck.terminology import (
+    TerminologyEntry,
     find_missing_english_translations,
     find_terminology_matches,
     load_terminology,
 )
-from tu_web_linguacheck.text_batches import batch_page_blocks
 from tu_web_linguacheck.urls import is_url_under_start_path, prepare_crawl_url
 
 app = typer.Typer(
@@ -130,43 +134,6 @@ def inspect(
 
     for language_link in translation_links:
         typer.echo(f"- {language_link.href} [{language_link.detection_method}]")
-
-
-def _check_text_findings(
-    text: str,
-    *,
-    language: str,
-    url: str,
-    profile: str,
-    disabled_rule_ids: Sequence[str] = (),
-    ignored_terms: Sequence[str] = (),
-) -> list[Finding]:
-    """Prüft Text lokal und überführt Ergebnisse in interne Funde."""
-    client = LanguageToolClient()
-
-    if disabled_rule_ids:
-        matches = client.check(
-            text=text,
-            language=language,
-            disabled_rule_ids=disabled_rule_ids,
-        )
-    else:
-        matches = client.check(text=text, language=language)
-
-    findings = [
-        finding_from_languagetool_match(
-            match,
-            url=url,
-            context=text,
-            profile=profile,
-        )
-        for match in matches
-    ]
-
-    return filter_ignored_terms(
-        findings,
-        ignored_terms=list(ignored_terms),
-    )
 
 
 def _display_findings(findings: Sequence[Finding]) -> None:
@@ -368,80 +335,6 @@ def main() -> None:
     app()
 
 
-def _check_page_text(
-    text: str,
-    *,
-    language: str,
-    url: str,
-    profile: str,
-    disabled_rule_ids: Sequence[str] = (),
-    ignored_terms: Sequence[str] = (),
-) -> tuple[list[Finding], int]:
-    """Prüft nichtleere Textblöcke mit globalen Offsets und Seitenkontext."""
-    findings: list[Finding] = []
-    checked_blocks = 0
-    block_offset = 0
-
-    for line in text.splitlines(keepends=True):
-        block = line.rstrip("\r\n")
-
-        if block:
-            checked_blocks += 1
-            block_findings = _check_text_findings(
-                block,
-                language=language,
-                url=url,
-                profile=profile,
-                disabled_rule_ids=disabled_rule_ids,
-                ignored_terms=ignored_terms,
-            )
-            findings.extend(
-                finding.model_copy(
-                    update={
-                        "context": text,
-                        "offset": finding.offset + block_offset,
-                    }
-                )
-                for finding in block_findings
-            )
-
-        block_offset += len(line)
-
-    return findings, checked_blocks
-
-
-def _check_page_blocks(
-    blocks: tuple[TextBlock, ...],
-    *,
-    language: str,
-    url: str,
-    profile: str,
-    disabled_rule_ids: Sequence[str] = (),
-    ignored_terms: Sequence[str] = (),
-) -> tuple[list[Finding], int]:
-    """Prüft gleichsprachige Textblöcke gebündelt mit globalen Offsets."""
-    findings: list[Finding] = []
-    context = "\n".join(block.text for block in blocks)
-
-    for batch_text, batch_language, batch_offset in batch_page_blocks(blocks, language):
-        batch_findings = _check_text_findings(
-            batch_text,
-            language=batch_language,
-            url=url,
-            profile=profile,
-            disabled_rule_ids=disabled_rule_ids,
-            ignored_terms=ignored_terms,
-        )
-        findings.extend(
-            finding.model_copy(
-                update={"context": context, "offset": finding.offset + batch_offset}
-            )
-            for finding in batch_findings
-        )
-
-    return findings, len(blocks)
-
-
 def _find_terminology_in_language_blocks(
     blocks: tuple[TextBlock, ...],
     *,
@@ -616,6 +509,28 @@ def check_crawl(
             profile=config.profile,
             language=config.check.language,
             checked_urls=tuple(page.url for page in pages),
+            command=" ".join(
+                part
+                for part in (
+                    "tu-web-linguacheck",
+                    "check-crawl",
+                    url,
+                    str(config_path),
+                    "--stay-under-start-path" if stay_under_start_path else None,
+                    "--report" if report_path is not None else None,
+                    str(report_path) if report_path is not None else None,
+                    "--pdf-report" if pdf_report_path is not None else None,
+                    str(pdf_report_path) if pdf_report_path is not None else None,
+                )
+                if part is not None
+            ),
+            config_path=str(config_path),
+            allowed_domains=tuple(config.crawl.allowed_domains),
+            max_depth=config.crawl.max_depth,
+            max_pages=config.crawl.max_pages,
+            requests_per_second=config.crawl.requests_per_second,
+            obey_robots_txt=config.crawl.obey_robots_txt,
+            stay_under_start_path=stay_under_start_path,
         ),
     )
     _write_reports(
@@ -642,17 +557,30 @@ def _target_context_for_source_offset(
     return None
 
 
-def _load_english_terminology(config: ProjectConfig):
-    """Lädt die primäre und alle zusätzlichen englischen Terminologiequellen."""
-    terminology_paths = [
+def _load_english_terminology_sources(
+    config: ProjectConfig,
+) -> tuple[tuple[Path, tuple[TerminologyEntry, ...]], ...]:
+    """Lädt englische Terminologiequellen mit ihren jeweiligen Einträgen."""
+    terminology_paths = (
         config.check.english_terminology_path,
+        config.check.cfv_english_terminology_path,
         *config.check.additional_english_terminology_paths,
-    ]
+    )
     return tuple(
-        entry
+        (terminology_path, load_terminology(terminology_path))
         for terminology_path in terminology_paths
         if terminology_path is not None
-        for entry in load_terminology(terminology_path)
+    )
+
+
+def _load_english_terminology(
+    config: ProjectConfig,
+) -> tuple[TerminologyEntry, ...]:
+    """Lädt die Einträge aller englischen Terminologiequellen."""
+    return tuple(
+        entry
+        for _, entries in _load_english_terminology_sources(config)
+        for entry in entries
     )
 
 
@@ -841,7 +769,10 @@ def check_translation_crawl(
     findings: list[Finding] = []
     checked_blocks = 0
     checked_urls: list[str] = []
-    english_terminology_entries = _load_english_terminology(config)
+    english_terminology_sources = _load_english_terminology_sources(config)
+    english_terminology_entries = tuple(
+        entry for _, entries in english_terminology_sources for entry in entries
+    )
 
     for german_page in pages:
         checked_urls.append(german_page.url)
@@ -883,13 +814,43 @@ def check_translation_crawl(
                 profile=config.profile,
                 language="de-DE → en-US",
                 checked_urls=tuple(checked_urls),
+                command=" ".join(
+                    part
+                    for part in (
+                        "tu-web-linguacheck",
+                        "check-translation-crawl",
+                        url,
+                        str(config_path),
+                        "--stay-under-start-path" if stay_under_start_path else None,
+                        "--report" if report_path is not None else None,
+                        str(report_path) if report_path is not None else None,
+                        "--pdf-report" if pdf_report_path is not None else None,
+                        str(pdf_report_path) if pdf_report_path is not None else None,
+                    )
+                    if part is not None
+                ),
+                config_path=str(config_path),
+                allowed_domains=tuple(config.crawl.allowed_domains),
+                max_depth=config.crawl.max_depth,
+                max_pages=config.crawl.max_pages,
+                requests_per_second=config.crawl.requests_per_second,
+                obey_robots_txt=config.crawl.obey_robots_txt,
+                stay_under_start_path=stay_under_start_path,
+                is_translation_check=True,
+                translation_terminology_sources=tuple(
+                    (terminology_path.name, len(entries))
+                    for terminology_path, entries in english_terminology_sources
+                ),
+                translation_uses_cfv_terminology=(
+                    config.check.cfv_english_terminology_path is not None
+                ),
             ),
         ),
     )
 
 
 @app.command()
-def check_translation(
+def check_translation(  # pylint: disable=too-many-locals
     url: str,
     config_path: Path,
     stay_under_start_path: bool = typer.Option(
@@ -933,6 +894,20 @@ def check_translation(
         raise typer.Exit(code=1)
     english_html = fetch_html(english_url, config.crawl.allowed_domains)
     english_content = extract_page_content(english_html)
+    german_terminology_sources = (
+        (
+            (
+                config.check.german_terminology_path,
+                load_terminology(config.check.german_terminology_path),
+            ),
+        )
+        if config.check.german_terminology_path is not None
+        else ()
+    )
+    english_terminology_sources = _load_english_terminology_sources(config)
+    english_terminology_entries = tuple(
+        entry for _, entries in english_terminology_sources for entry in entries
+    )
     language_findings, checked_blocks = _check_translation_page_contents(
         german_content,
         english_content,
@@ -959,7 +934,7 @@ def check_translation(
         for match in find_missing_english_translations(
             german_content.text,
             english_content.text,
-            _load_english_terminology(config),
+            english_terminology_entries,
         )
     ]
 
@@ -980,6 +955,38 @@ def check_translation(
                 profile=config.profile,
                 language="de-DE → en-US",
                 checked_urls=(prepared_url, english_url),
+                command=" ".join(
+                    part
+                    for part in (
+                        "tu-web-linguacheck",
+                        "check-translation",
+                        url,
+                        str(config_path),
+                        "--stay-under-start-path" if stay_under_start_path else None,
+                        "--report" if report_path is not None else None,
+                        str(report_path) if report_path is not None else None,
+                        "--pdf-report" if pdf_report_path is not None else None,
+                        str(pdf_report_path) if pdf_report_path is not None else None,
+                    )
+                    if part is not None
+                ),
+                config_path=str(config_path),
+                allowed_domains=tuple(config.crawl.allowed_domains),
+                max_depth=config.crawl.max_depth,
+                max_pages=config.crawl.max_pages,
+                requests_per_second=config.crawl.requests_per_second,
+                obey_robots_txt=config.crawl.obey_robots_txt,
+                stay_under_start_path=stay_under_start_path,
+                is_translation_check=True,
+                translation_terminology_sources=tuple(
+                    (terminology_path.name, len(entries))
+                    for terminology_path, entries in (
+                        german_terminology_sources + english_terminology_sources
+                    )
+                ),
+                translation_uses_cfv_terminology=(
+                    config.check.cfv_english_terminology_path is not None
+                ),
             ),
         ),
     )
