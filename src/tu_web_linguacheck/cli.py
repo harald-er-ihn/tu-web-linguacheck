@@ -692,6 +692,43 @@ class _TranslationCrawlPageResult:
     fetch_error: Exception | None = None
 
 
+def _check_translation_crawl_pages(
+    pages: Sequence[CrawledPage],
+    *,
+    config: ProjectConfig,
+    english_terminology_entries: tuple[TerminologyEntry, ...],
+) -> tuple[list[Finding], int, list[str]]:
+    """Prüft Übersetzungen gecrawlter deutscher Seiten."""
+    findings: list[Finding] = []
+    checked_blocks = 0
+    checked_urls: list[str] = []
+
+    for german_page in pages:
+        checked_urls.append(german_page.url)
+        page_result = _check_translation_crawl_page(
+            german_page=german_page,
+            config=config,
+            english_terminology_entries=english_terminology_entries,
+        )
+        if page_result.fetch_error is not None:
+            typer.echo(
+                "Überspringe englische Übersetzung wegen Abruffehler: "
+                f"{page_result.english_url} ({page_result.fetch_error})"
+            )
+            continue
+        if page_result.english_url is None:
+            typer.echo(
+                f"Keine erlaubte englische Übersetzungs-URL gefunden: {german_page.url}"
+            )
+            continue
+
+        findings.extend(page_result.findings)
+        checked_blocks += page_result.checked_blocks
+        checked_urls.append(page_result.english_url)
+
+    return findings, checked_blocks, checked_urls
+
+
 def _check_translation_crawl_page(
     *,
     german_page,
@@ -755,6 +792,63 @@ def _check_translation_crawl_page(
     )
 
 
+def _translation_crawl_report_data(  # pylint: disable=too-many-arguments
+    *,
+    url: str,
+    config_path: Path,
+    stay_under_start_path: bool,
+    report_path: Path | None,
+    pdf_report_path: Path | None,
+    config: ProjectConfig,
+    checked_urls: Sequence[str],
+    checked_blocks: int,
+    findings: list[Finding],
+    english_terminology_sources: Sequence[tuple[Path, tuple[TerminologyEntry, ...]]],
+) -> _ReportData:
+    """Erstellt Berichtsdaten für einen Übersetzungs-Crawl."""
+    return _ReportData(
+        crawled_pages=len(checked_urls),
+        checked_blocks=checked_blocks,
+        findings=findings,
+        context=ReportContext(
+            start_url=url,
+            profile=config.profile,
+            language="de-DE → en-US",
+            checked_urls=tuple(checked_urls),
+            command=" ".join(
+                part
+                for part in (
+                    "tu-web-linguacheck",
+                    "check-translation-crawl",
+                    url,
+                    str(config_path),
+                    "--stay-under-start-path" if stay_under_start_path else None,
+                    "--report" if report_path is not None else None,
+                    str(report_path) if report_path is not None else None,
+                    "--pdf-report" if pdf_report_path is not None else None,
+                    str(pdf_report_path) if pdf_report_path is not None else None,
+                )
+                if part is not None
+            ),
+            config_path=str(config_path),
+            allowed_domains=tuple(config.crawl.allowed_domains),
+            max_depth=config.crawl.max_depth,
+            max_pages=config.crawl.max_pages,
+            requests_per_second=config.crawl.requests_per_second,
+            obey_robots_txt=config.crawl.obey_robots_txt,
+            stay_under_start_path=stay_under_start_path,
+            is_translation_check=True,
+            translation_terminology_sources=tuple(
+                (terminology_path.name, len(entries))
+                for terminology_path, entries in english_terminology_sources
+            ),
+            translation_uses_cfv_terminology=(
+                config.check.cfv_english_terminology_path is not None
+            ),
+        ),
+    )
+
+
 @app.command()
 def check_translation_crawl(
     url: str,
@@ -793,36 +887,15 @@ def check_translation_crawl(
             f"Überspringe deutsche Seite wegen Abruffehler: {candidate.url} ({error})"
         ),
     )
-    findings: list[Finding] = []
-    checked_blocks = 0
-    checked_urls: list[str] = []
     english_terminology_sources = _load_english_terminology_sources(config)
     english_terminology_entries = tuple(
         entry for _, entries in english_terminology_sources for entry in entries
     )
-
-    for german_page in pages:
-        checked_urls.append(german_page.url)
-        page_result = _check_translation_crawl_page(
-            german_page=german_page,
-            config=config,
-            english_terminology_entries=english_terminology_entries,
-        )
-        if page_result.fetch_error is not None:
-            typer.echo(
-                "Überspringe englische Übersetzung wegen Abruffehler: "
-                f"{page_result.english_url} ({page_result.fetch_error})"
-            )
-            continue
-        if page_result.english_url is None:
-            typer.echo(
-                f"Keine erlaubte englische Übersetzungs-URL gefunden: {german_page.url}"
-            )
-            continue
-
-        findings.extend(page_result.findings)
-        checked_blocks += page_result.checked_blocks
-        checked_urls.append(page_result.english_url)
+    findings, checked_blocks, checked_urls = _check_translation_crawl_pages(
+        pages,
+        config=config,
+        english_terminology_entries=english_terminology_entries,
+    )
 
     typer.echo(f"Gecrawlte deutsche Seiten: {len(pages)}")
     typer.echo(f"Geprüfte englische Übersetzungen: {len(checked_urls) - len(pages)}")
@@ -832,46 +905,17 @@ def check_translation_crawl(
     _write_reports(
         report_path=report_path,
         pdf_report_path=pdf_report_path,
-        report_data=_ReportData(
-            crawled_pages=len(checked_urls),
+        report_data=_translation_crawl_report_data(
+            url=url,
+            config_path=config_path,
+            stay_under_start_path=stay_under_start_path,
+            report_path=report_path,
+            pdf_report_path=pdf_report_path,
+            config=config,
+            checked_urls=checked_urls,
             checked_blocks=checked_blocks,
             findings=findings,
-            context=ReportContext(
-                start_url=url,
-                profile=config.profile,
-                language="de-DE → en-US",
-                checked_urls=tuple(checked_urls),
-                command=" ".join(
-                    part
-                    for part in (
-                        "tu-web-linguacheck",
-                        "check-translation-crawl",
-                        url,
-                        str(config_path),
-                        "--stay-under-start-path" if stay_under_start_path else None,
-                        "--report" if report_path is not None else None,
-                        str(report_path) if report_path is not None else None,
-                        "--pdf-report" if pdf_report_path is not None else None,
-                        str(pdf_report_path) if pdf_report_path is not None else None,
-                    )
-                    if part is not None
-                ),
-                config_path=str(config_path),
-                allowed_domains=tuple(config.crawl.allowed_domains),
-                max_depth=config.crawl.max_depth,
-                max_pages=config.crawl.max_pages,
-                requests_per_second=config.crawl.requests_per_second,
-                obey_robots_txt=config.crawl.obey_robots_txt,
-                stay_under_start_path=stay_under_start_path,
-                is_translation_check=True,
-                translation_terminology_sources=tuple(
-                    (terminology_path.name, len(entries))
-                    for terminology_path, entries in english_terminology_sources
-                ),
-                translation_uses_cfv_terminology=(
-                    config.check.cfv_english_terminology_path is not None
-                ),
-            ),
+            english_terminology_sources=english_terminology_sources,
         ),
     )
 
