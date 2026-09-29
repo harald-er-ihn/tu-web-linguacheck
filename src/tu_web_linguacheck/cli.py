@@ -920,6 +920,64 @@ def check_translation_crawl(
     )
 
 
+def _translation_report_data(  # pylint: disable=too-many-arguments
+    *,
+    url: str,
+    config_path: Path,
+    stay_under_start_path: bool,
+    report_path: Path | None,
+    pdf_report_path: Path | None,
+    prepared_url: str,
+    english_url: str,
+    config: ProjectConfig,
+    checked_blocks: int,
+    findings: list[Finding],
+    terminology_sources: Sequence[tuple[Path, tuple[TerminologyEntry, ...]]],
+) -> _ReportData:
+    """Erstellt Berichtsdaten für eine einzelne Übersetzungsprüfung."""
+    return _ReportData(
+        crawled_pages=2,
+        checked_blocks=checked_blocks,
+        findings=findings,
+        context=ReportContext(
+            start_url=prepared_url,
+            profile=config.profile,
+            language="de-DE → en-US",
+            checked_urls=(prepared_url, english_url),
+            command=" ".join(
+                part
+                for part in (
+                    "tu-web-linguacheck",
+                    "check-translation",
+                    url,
+                    str(config_path),
+                    "--stay-under-start-path" if stay_under_start_path else None,
+                    "--report" if report_path is not None else None,
+                    str(report_path) if report_path is not None else None,
+                    "--pdf-report" if pdf_report_path is not None else None,
+                    str(pdf_report_path) if pdf_report_path is not None else None,
+                )
+                if part is not None
+            ),
+            config_path=str(config_path),
+            allowed_domains=tuple(config.crawl.allowed_domains),
+            max_depth=config.crawl.max_depth,
+            max_pages=config.crawl.max_pages,
+            requests_per_second=config.crawl.requests_per_second,
+            obey_robots_txt=config.crawl.obey_robots_txt,
+            stay_under_start_path=stay_under_start_path,
+            is_translation_check=True,
+            translation_terminology_sources=tuple(
+                (terminology_path.name, len(entries))
+                for terminology_path, entries in terminology_sources
+            ),
+            translation_uses_cfv_terminology=(
+                config.check.cfv_english_terminology_path is not None
+            ),
+        ),
+    )
+
+
 @app.command()
 def check_translation(  # pylint: disable=too-many-locals
     url: str,
@@ -1017,47 +1075,19 @@ def check_translation(  # pylint: disable=too-many-locals
     _write_reports(
         report_path=report_path,
         pdf_report_path=pdf_report_path,
-        report_data=_ReportData(
-            crawled_pages=2,
+        report_data=_translation_report_data(
+            url=url,
+            config_path=config_path,
+            stay_under_start_path=stay_under_start_path,
+            report_path=report_path,
+            pdf_report_path=pdf_report_path,
+            prepared_url=prepared_url,
+            english_url=english_url,
+            config=config,
             checked_blocks=checked_blocks,
             findings=findings,
-            context=ReportContext(
-                start_url=prepared_url,
-                profile=config.profile,
-                language="de-DE → en-US",
-                checked_urls=(prepared_url, english_url),
-                command=" ".join(
-                    part
-                    for part in (
-                        "tu-web-linguacheck",
-                        "check-translation",
-                        url,
-                        str(config_path),
-                        "--stay-under-start-path" if stay_under_start_path else None,
-                        "--report" if report_path is not None else None,
-                        str(report_path) if report_path is not None else None,
-                        "--pdf-report" if pdf_report_path is not None else None,
-                        str(pdf_report_path) if pdf_report_path is not None else None,
-                    )
-                    if part is not None
-                ),
-                config_path=str(config_path),
-                allowed_domains=tuple(config.crawl.allowed_domains),
-                max_depth=config.crawl.max_depth,
-                max_pages=config.crawl.max_pages,
-                requests_per_second=config.crawl.requests_per_second,
-                obey_robots_txt=config.crawl.obey_robots_txt,
-                stay_under_start_path=stay_under_start_path,
-                is_translation_check=True,
-                translation_terminology_sources=tuple(
-                    (terminology_path.name, len(entries))
-                    for terminology_path, entries in (
-                        german_terminology_sources + english_terminology_sources
-                    )
-                ),
-                translation_uses_cfv_terminology=(
-                    config.check.cfv_english_terminology_path is not None
-                ),
+            terminology_sources=(
+                german_terminology_sources + english_terminology_sources
             ),
         ),
     )
