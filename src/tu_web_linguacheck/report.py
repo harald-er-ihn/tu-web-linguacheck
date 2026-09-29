@@ -194,6 +194,56 @@ def _finding_sections(
     return finding_tables, table_of_contents
 
 
+def _translation_check_information(context: ReportContext) -> str:
+    """Erzeugt Hinweise für Berichte einer Übersetzungsprüfung."""
+    if not context.is_translation_check:
+        return ""
+
+    terminology_sources = chr(10).join(
+        f"        <li>{escape(source_path)}: {entry_count} Einträge</li>"
+        for source_path, entry_count in context.translation_terminology_sources
+    )
+    total_entry_count = sum(
+        entry_count for _, entry_count in context.translation_terminology_sources
+    )
+    terminology_information = (
+        (
+            "<p>Für diesen Prüflauf wurden lokale "
+            "Übersetzungsterminologiequellen verwendet.</p>\n"
+            "<ul>\n"
+            f"{terminology_sources}\n"
+            "</ul>\n"
+            f"<p>Insgesamt verwendete Einträge: {total_entry_count}</p>"
+        )
+        if context.translation_terminology_sources
+        else (
+            "<p>Für diesen Prüflauf wurden keine lokalen "
+            "Übersetzungsterminologiequellen verwendet.</p>"
+        )
+    )
+    cfv_example = (
+        (
+            "<p>Begleitservice wird als accompaniment service empfohlen; "
+            "escort service wird als zu prüfende Variante behandelt.</p>"
+        )
+        if context.translation_uses_cfv_terminology
+        else ""
+    )
+    service_portal_note = (
+        "<p>Externer Hinweis im Serviceportal: "
+        '<a href="https://service.tu-dortmund.de/en/group/intra/'
+        'englischer-sprachgebrauch">'
+        "TU-Sprachgebrauch für englische Texte</a></p>"
+    )
+    return f"""
+    <section id="translation-check-information">
+      <h2>Hinweise zur Übersetzungsprüfung</h2>
+      {terminology_information}
+      {cfv_example}
+      {service_portal_note}
+    </section>"""
+
+
 def _document(  # pylint: disable=too-many-locals
     *,
     crawled_pages: int,
@@ -260,51 +310,7 @@ def _document(  # pylint: disable=too-many-locals
       <p>Sprache: {escape(context.language)}</p>
     </section>"""
 
-    translation_check_information = ""
-    if context.is_translation_check:
-        terminology_sources = chr(10).join(
-            f"        <li>{escape(source_path)}: {entry_count} Einträge</li>"
-            for source_path, entry_count in context.translation_terminology_sources
-        )
-        total_entry_count = sum(
-            entry_count for _, entry_count in context.translation_terminology_sources
-        )
-        terminology_information = (
-            (
-                "<p>Für diesen Prüflauf wurden lokale "
-                "Übersetzungsterminologiequellen verwendet.</p>\n"
-                "<ul>\n"
-                f"{terminology_sources}\n"
-                "</ul>\n"
-                f"<p>Insgesamt verwendete Einträge: {total_entry_count}</p>"
-            )
-            if context.translation_terminology_sources
-            else (
-                "<p>Für diesen Prüflauf wurden keine lokalen "
-                "Übersetzungsterminologiequellen verwendet.</p>"
-            )
-        )
-        cfv_example = (
-            (
-                "<p>Begleitservice wird als accompaniment service empfohlen; "
-                "escort service wird als zu prüfende Variante behandelt.</p>"
-            )
-            if context.translation_uses_cfv_terminology
-            else ""
-        )
-        service_portal_note = (
-            "<p>Externer Hinweis im Serviceportal: "
-            '<a href="https://service.tu-dortmund.de/en/group/intra/'
-            'englischer-sprachgebrauch">'
-            "TU-Sprachgebrauch für englische Texte</a></p>"
-        )
-        translation_check_information = f"""
-    <section id="translation-check-information">
-      <h2>Hinweise zur Übersetzungsprüfung</h2>
-      {terminology_information}
-      {cfv_example}
-      {service_portal_note}
-    </section>"""
+    translation_check_information = _translation_check_information(context)
 
     return f"""\
 <!doctype html>
