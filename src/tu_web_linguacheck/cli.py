@@ -215,14 +215,73 @@ def check_text(
     _display_findings(findings)
 
 
+def _check_url_page_content(
+    page_content: PageContent,
+    *,
+    config: ProjectConfig,
+    url: str,
+    missing_english_lang_only: bool,
+) -> tuple[list[Finding], int]:
+    """Prüft extrahierten Seiteninhalt und ergänzt lokale Terminologiefunde."""
+    if page_content.blocks:
+        findings, checked_blocks = _check_page_blocks(
+            page_content.blocks,
+            language=config.check.language,
+            url=url,
+            profile=config.profile,
+            disabled_rule_ids=config.check.ignored_rule_ids,
+            ignored_terms=config.check.ignored_terms,
+        )
+    else:
+        findings, checked_blocks = _check_page_text(
+            page_content.text,
+            language=config.check.language,
+            url=url,
+            profile=config.profile,
+            disabled_rule_ids=config.check.ignored_rule_ids,
+            ignored_terms=config.check.ignored_terms,
+        )
+
+    if missing_english_lang_only:
+        return (
+            [finding for finding in findings if finding.category == "HTML_LANGUAGE"],
+            checked_blocks,
+        )
+
+    if config.check.terminology_path is not None:
+        terminology_entries = load_terminology(config.check.terminology_path)
+        findings.extend(
+            finding_from_terminology_match(
+                match,
+                url=url,
+                context=page_content.text,
+                profile=config.profile,
+            )
+            for match in find_terminology_matches(
+                page_content.text,
+                terminology_entries,
+            )
+        )
+
+    return findings, checked_blocks
+
+
 @app.command()
-def check_url(
+def check_url(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     url: str,
     config_path: Path,
     stay_under_start_path: bool = typer.Option(
         False,
         "--stay-under-start-path",
         help="Beschränkt Redirects auf den Startpfad und dessen Unterpfade.",
+    ),
+    missing_english_lang_only: bool = typer.Option(
+        False,
+        "--missing-english-lang-only",
+        help=(
+            "Prüft ausschließlich, ob vermutlich englische Ausdrücke in deutschen "
+            'Texten ohne lang="en" oder lang="en-US" ausgezeichnet sind.'
+        ),
     ),
     report_path: Path | None = typer.Option(
         None, "--report", help="Schreibt einen HTML-Bericht in die angegebene Datei."
@@ -252,42 +311,15 @@ def check_url(
     typer.echo(f"Extrahierte Textzeichen: {len(page_content.text)}")
 
     try:
-        if page_content.blocks:
-            findings, checked_blocks = _check_page_blocks(
-                page_content.blocks,
-                language=config.check.language,
-                url=prepared_url,
-                profile=config.profile,
-                disabled_rule_ids=config.check.ignored_rule_ids,
-                ignored_terms=config.check.ignored_terms,
-            )
-        else:
-            findings, checked_blocks = _check_page_text(
-                page_content.text,
-                language=config.check.language,
-                url=prepared_url,
-                profile=config.profile,
-                disabled_rule_ids=config.check.ignored_rule_ids,
-                ignored_terms=config.check.ignored_terms,
-            )
+        findings, checked_blocks = _check_url_page_content(
+            page_content,
+            config=config,
+            url=prepared_url,
+            missing_english_lang_only=missing_english_lang_only,
+        )
     except LanguageToolUnavailableError as error:
         typer.echo(str(error))
         raise typer.Exit(code=1) from error
-
-    if config.check.terminology_path is not None:
-        terminology_entries = load_terminology(config.check.terminology_path)
-        findings.extend(
-            finding_from_terminology_match(
-                match,
-                url=prepared_url,
-                context=page_content.text,
-                profile=config.profile,
-            )
-            for match in find_terminology_matches(
-                page_content.text,
-                terminology_entries,
-            )
-        )
 
     typer.echo(f"Prüfblöcke: {checked_blocks}")
     _display_findings(findings)
@@ -421,6 +453,7 @@ def _check_crawled_page(
     *,
     config: ProjectConfig,
     terminology_entries: tuple[TerminologyEntry, ...] | None,
+    missing_english_lang_only: bool,
 ) -> tuple[list[Finding], int]:
     """Prüft eine gecrawlte Seite und ergänzt lokale Terminologiefunde."""
     if page.blocks:
@@ -441,8 +474,12 @@ def _check_crawled_page(
             disabled_rule_ids=config.check.ignored_rule_ids,
             ignored_terms=config.check.ignored_terms,
         )
+    if missing_english_lang_only:
+        findings = [
+            finding for finding in findings if finding.category == "HTML_LANGUAGE"
+        ]
 
-    if terminology_entries is not None:
+    if not missing_english_lang_only and terminology_entries is not None:
         findings.extend(
             finding_from_terminology_match(
                 match,
@@ -460,11 +497,12 @@ def _check_crawled_pages(
     pages: Sequence[CrawledPage],
     *,
     config: ProjectConfig,
+    missing_english_lang_only: bool,
 ) -> tuple[list[Finding], int]:
     """Prüft gecrawlte Seiten und summiert ihre Funde und Prüfblöcke."""
     terminology_entries = (
         load_terminology(config.check.terminology_path)
-        if config.check.terminology_path is not None
+        if not missing_english_lang_only and config.check.terminology_path is not None
         else None
     )
     findings: list[Finding] = []
@@ -476,6 +514,7 @@ def _check_crawled_pages(
                 page,
                 config=config,
                 terminology_entries=terminology_entries,
+                missing_english_lang_only=missing_english_lang_only,
             )
             findings.extend(page_findings)
             checked_blocks += page_checked_blocks
@@ -487,13 +526,21 @@ def _check_crawled_pages(
 
 
 @app.command()
-def check_crawl(
+def check_crawl(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     url: str,
     config_path: Path,
     stay_under_start_path: bool = typer.Option(
         False,
         "--stay-under-start-path",
         help="Beschränkt den Crawl auf den Startpfad und dessen Unterpfade.",
+    ),
+    missing_english_lang_only: bool = typer.Option(
+        False,
+        "--missing-english-lang-only",
+        help=(
+            "Prüft ausschließlich, ob vermutlich englische Ausdrücke in deutschen "
+            'Texten ohne lang="en" oder lang="en-US" ausgezeichnet sind.'
+        ),
     ),
     report_path: Path | None = typer.Option(
         None,
@@ -522,7 +569,11 @@ def check_crawl(
             f"Überspringe Seite wegen Abruffehler: {candidate.url} ({error})"
         ),
     )
-    findings, checked_blocks = _check_crawled_pages(pages, config=config)
+    findings, checked_blocks = _check_crawled_pages(
+        pages,
+        config=config,
+        missing_english_lang_only=missing_english_lang_only,
+    )
     typer.echo(f"Gecrawlte Seiten: {len(pages)}")
     typer.echo(f"Prüfblöcke: {checked_blocks}")
     _display_findings(findings)
@@ -544,6 +595,9 @@ def check_crawl(
                     url,
                     str(config_path),
                     "--stay-under-start-path" if stay_under_start_path else None,
+                    "--missing-english-lang-only"
+                    if missing_english_lang_only
+                    else None,
                     "--report" if report_path is not None else None,
                     str(report_path) if report_path is not None else None,
                     "--pdf-report" if pdf_report_path is not None else None,

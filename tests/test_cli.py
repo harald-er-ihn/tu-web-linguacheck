@@ -86,7 +86,18 @@ def test_check_page_blocks_batches_consecutive_blocks_of_same_language(
                     replacements=("ist",),
                 )
             ]
-
+        if (text, language) == ("istf", "en-US"):
+            return [
+                LanguageToolMatch(
+                    message="English spelling error.",
+                    offset=0,
+                    length=4,
+                    rule_id="ENGLISH_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                )
+            ]
         return []
 
     monkeypatch.setattr(
@@ -109,11 +120,115 @@ def test_check_page_blocks_batches_consecutive_blocks_of_same_language(
     assert checked_texts == [
         ("Überschrift\nDas istf ein Test.", "de-DE"),
         ("English text.", "en-US"),
+        ("istf", "en-US"),
     ]
     assert checked_blocks == 3
     assert len(findings) == 1
     assert findings[0].offset == 16
     assert findings[0].context == "Überschrift\nDas istf ein Test.\nEnglish text."
+
+
+def test_check_page_blocks_reports_unmarked_consecutive_english_words(
+    monkeypatch,
+) -> None:
+    """Meldet unmarkierte englische Wortfolgen als HTML-Sprachhinweis."""
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        if (text, language) == ("Das customer success management verbessert.", "de-DE"):
+            return [
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=4,
+                    length=8,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=13,
+                    length=7,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=21,
+                    length=10,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+            ]
+
+        assert language == "en-US"
+        assert text in {"customer", "success", "management"}
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.page_checking.LanguageToolClient.check",
+        fake_check,
+    )
+
+    findings, checked_blocks = _check_page_blocks(
+        (TextBlock(text="Das customer success management verbessert.", language="de"),),
+        language="de-DE",
+        url="https://example.org/startseite/",
+        profile="generic-de",
+    )
+
+    assert checked_blocks == 1
+    assert len(findings) == 1
+    assert findings[0].category == "HTML_LANGUAGE"
+    assert findings[0].severity == "warning"
+    expected_message = (
+        'Englischer Ausdruck ist nicht mit lang="en" oder lang="en-US" '
+        + "ausgezeichnet."
+    )
+    assert findings[0].message == expected_message
+    assert findings[0].offset == 4
+    assert findings[0].length == 27
+    assert findings[0].suggestions == ('lang="en-US"',)
+    assert findings[0].source_rule_id == "MISSING_ENGLISH_LANG"
+    assert findings[0].context == "Das customer success management verbessert."
+
+
+def test_check_page_blocks_ignores_english_words_with_english_html_language(
+    monkeypatch,
+) -> None:
+    """Englisch ausgezeichnete Wörter erhalten keinen HTML-Sprachhinweis."""
+    checked_texts: list[tuple[str, str]] = []
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        checked_texts.append((text, language))
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.page_checking.LanguageToolClient.check",
+        fake_check,
+    )
+
+    findings, checked_blocks = _check_page_blocks(
+        (
+            TextBlock(text="Deutscher Text.", language="de"),
+            TextBlock(text="customer success management", language="en"),
+            TextBlock(text="American English", language="en-US"),
+        ),
+        language="de-DE",
+        url="https://example.org/startseite/",
+        profile="generic-de",
+    )
+
+    assert not findings
+    assert checked_blocks == 3
+    assert checked_texts == [
+        ("Deutscher Text.", "de-DE"),
+        ("customer success management\nAmerican English", "en-US"),
+    ]
 
 
 def test_help_displays_project_name_and_run_command() -> None:
@@ -134,6 +249,34 @@ def test_help_describes_html_and_pdf_reports() -> None:
     assert "--pdf-report DATEI.pdf" in result.output
     assert "HTML-Bericht" in result.output
     assert "PDF-Bericht" in result.output
+
+
+def test_check_url_help_describes_missing_english_lang_only() -> None:
+    """Die URL-Prüfung erklärt den Modus für fehlende Englisch-Kennzeichnungen."""
+    result = runner.invoke(app, ["check-url", "--help"])
+
+    assert result.exit_code == 0
+    assert "--missing-english-lang-only" in result.output
+    assert "Prüft ausschließlich" in result.output
+    assert "englische Ausdrücke" in result.output
+    assert 'lang="en"' in result.output
+    assert 'lang="en-US"' in result.output
+    assert "ausgezeichnet" in result.output
+    assert "sind." in result.output
+
+
+def test_check_crawl_help_describes_missing_english_lang_only() -> None:
+    """Der Crawl-Check erklärt den Modus für fehlende Englisch-Kennzeichnungen."""
+    result = runner.invoke(app, ["check-crawl", "--help"])
+
+    assert result.exit_code == 0
+    assert "--missing-english-lang-only" in result.output
+    assert "Prüft ausschließlich" in result.output
+    assert "englische Ausdrücke" in result.output
+    assert 'lang="en"' in result.output
+    assert 'lang="en-US"' in result.output
+    assert "ausgezeichnet" in result.output
+    assert "sind." in result.output
 
 
 def test_version_displays_package_version(monkeypatch) -> None:
@@ -340,6 +483,246 @@ crawl:
     assert "Konfiguration ungültig." in result.output
     assert "max_pages" in result.output
     assert "Traceback" not in result.output
+
+
+def test_check_url_missing_english_lang_only_reports_only_html_language_findings(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Der Alleinmodus meldet nur fehlende englische HTML-Sprachkennzeichnungen."""
+    config_path = tmp_path / "config.yaml"
+    terminology_path = tmp_path / "terminology.json"
+    config = ProjectConfig(
+        profile="generic-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=1,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+        check={"terminology_path": terminology_path},
+    )
+
+    def fake_check(
+        _self, *, text: str, language: str, **_kwargs
+    ) -> list[LanguageToolMatch]:
+        if (text, language) == ("Das customer success management verbessert.", "de-DE"):
+            return [
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=4,
+                    length=8,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=13,
+                    length=7,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=21,
+                    length=10,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Grammatikmeldung.",
+                    offset=0,
+                    length=3,
+                    rule_id="GERMAN_GRAMMAR_RULE",
+                    category="GRAMMAR",
+                    issue_type="grammar",
+                    replacements=(),
+                ),
+            ]
+
+        assert language == "en-US"
+        assert text in {"customer", "success", "management"}
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda path: config if path == config_path else None,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.prepare_crawl_url",
+        lambda url, crawl_config: (
+            "https://example.org/startseite/"
+            if url == "https://example.org/startseite/" and crawl_config == config.crawl
+            else None
+        ),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        lambda url, allowed_domains: (
+            "<html></html>"
+            if url == "https://example.org/startseite/"
+            and allowed_domains == ["example.org"]
+            else ""
+        ),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.extract_page_content",
+        lambda html: (
+            PageContent(
+                title="Testseite",
+                text="Das customer success management verbessert.",
+                blocks=(
+                    TextBlock(
+                        text="Das customer success management verbessert.",
+                        language="de",
+                    ),
+                ),
+            )
+            if html == "<html></html>"
+            else None
+        ),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.page_checking.LanguageToolClient.check",
+        fake_check,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_terminology",
+        lambda _path: (_ for _ in ()).throw(
+            AssertionError("Terminologie darf im Alleinmodus nicht geladen werden.")
+        ),
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-url",
+            "https://example.org/startseite/",
+            str(config_path),
+            "--missing-english-lang-only",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Sprachfunde: 1" in result.output
+    assert "Kategorie: HTML_LANGUAGE" in result.output
+    assert "Regel: MISSING_ENGLISH_LANG" in result.output
+    assert "Fundstelle: customer success management" in result.output
+    assert "GERMAN_GRAMMAR_RULE" not in result.output
+    assert "GERMAN_SPELLER_RULE" not in result.output
+
+
+def test_check_url_reports_unmarked_english_words_in_standard_mode(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Der Standardmodus ergänzt Hinweise für fehlende Englisch-Kennzeichnungen."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="generic-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=1,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+
+    def fake_check(
+        _self,
+        *,
+        text: str,
+        language: str,
+        **_kwargs,
+    ) -> list[LanguageToolMatch]:
+        if (text, language) == ("Das customer success management verbessert.", "de-DE"):
+            return [
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=4,
+                    length=8,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=13,
+                    length=7,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=21,
+                    length=10,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+            ]
+
+        assert language == "en-US"
+        assert text in {"customer", "success", "management"}
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda path: config if path == config_path else None,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.prepare_crawl_url",
+        lambda url, _crawl_config: url,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        lambda _url, _allowed_domains: "<html></html>",
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.extract_page_content",
+        lambda _html: PageContent(
+            title="Testseite",
+            text="Das customer success management verbessert.",
+            blocks=(
+                TextBlock(
+                    text="Das customer success management verbessert.",
+                    language="de",
+                ),
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.page_checking.LanguageToolClient.check",
+        fake_check,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-url",
+            "https://example.org/startseite/",
+            str(config_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Sprachfunde: 1" in result.output
+    assert "Kategorie: HTML_LANGUAGE" in result.output
+    assert "Regel: MISSING_ENGLISH_LANG" in result.output
+    assert "Fundstelle: customer success management" in result.output
+    assert "GERMAN_SPELLER_RULE" not in result.output
 
 
 def test_check_url_checks_one_allowed_html_page(monkeypatch, tmp_path) -> None:
@@ -855,6 +1238,159 @@ def test_check_crawl_checks_content_of_crawled_pages(monkeypatch, tmp_path) -> N
     assert "Gecrawlte Seiten: 2" in result.output
     assert "Prüfblöcke: 2" in result.output
     assert "Sprachfunde: 0" in result.output
+
+
+def test_check_crawl_missing_english_lang_only_reports_only_html_language_findings(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Der Crawl-Alleinmodus meldet nur fehlende Englisch-Kennzeichnungen."""
+    config_path = tmp_path / "config.yaml"
+    terminology_path = tmp_path / "terminology.json"
+    config = ProjectConfig(
+        profile="generic-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=1,
+            max_pages=10,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+        check={"terminology_path": terminology_path},
+    )
+
+    def fake_crawl_pages_with_content(**_kwargs):
+        return [
+            CrawledPage(
+                url="https://example.org/erste-seite/",
+                depth=0,
+                title="Erste Seite",
+                text="Das customer success management verbessert.",
+                blocks=(
+                    TextBlock(
+                        text="Das customer success management verbessert.",
+                        language="de",
+                    ),
+                ),
+            ),
+            CrawledPage(
+                url="https://example.org/zweite-seite/",
+                depth=1,
+                title="Zweite Seite",
+                text="Ein deutscher Text.",
+                blocks=(TextBlock(text="Ein deutscher Text.", language="de"),),
+            ),
+        ]
+
+    def fake_check(
+        _self,
+        *,
+        text: str,
+        language: str,
+        **_kwargs,
+    ) -> list[LanguageToolMatch]:
+        if not text:
+            return []
+
+        if (text, language) == (
+            "Das customer success management verbessert.",
+            "de-DE",
+        ):
+            return [
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=4,
+                    length=8,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=13,
+                    length=7,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=21,
+                    length=10,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Grammatikmeldung.",
+                    offset=0,
+                    length=3,
+                    rule_id="GERMAN_GRAMMAR_RULE",
+                    category="GRAMMAR",
+                    issue_type="grammar",
+                    replacements=(),
+                ),
+            ]
+
+        if (text, language) == ("Ein deutscher Text.", "de-DE"):
+            return [
+                LanguageToolMatch(
+                    message="Grammatikmeldung.",
+                    offset=0,
+                    length=3,
+                    rule_id="GERMAN_GRAMMAR_RULE",
+                    category="GRAMMAR",
+                    issue_type="grammar",
+                    replacements=(),
+                ),
+            ]
+
+        assert language == "en-US"
+        assert text in {"customer", "success", "management"}
+        return []
+
+    def fail_load_terminology(_path):
+        raise AssertionError("Terminologie darf im Alleinmodus nicht geladen werden.")
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda path: config if path == config_path else None,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.crawl_pages_with_content",
+        fake_crawl_pages_with_content,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.page_checking.LanguageToolClient.check",
+        fake_check,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_terminology",
+        fail_load_terminology,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-crawl",
+            "https://example.org/",
+            str(config_path),
+            "--missing-english-lang-only",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Gecrawlte Seiten: 2" in result.output
+    assert "Sprachfunde: 1" in result.output
+    assert "URL: https://example.org/erste-seite/" in result.output
+    assert "Kategorie: HTML_LANGUAGE" in result.output
+    assert "Regel: MISSING_ENGLISH_LANG" in result.output
+    assert "Fundstelle: customer success management" in result.output
+    assert "GERMAN_GRAMMAR_RULE" not in result.output
+    assert "GERMAN_SPELLER_RULE" not in result.output
 
 
 def test_check_crawl_displays_url_for_each_finding(monkeypatch, tmp_path) -> None:

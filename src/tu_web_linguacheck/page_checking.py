@@ -91,6 +91,157 @@ def _check_page_text(
     return findings, checked_blocks
 
 
+def _is_german_or_unspecified_block(
+    block: TextBlock,
+    *,
+    configured_language: str,
+) -> bool:
+    """Prüft, ob ein Block deutsch ist oder keine HTML-Sprache angibt."""
+    configured_primary_language = configured_language.split("-", maxsplit=1)[0]
+    return configured_primary_language.casefold() == "de" and (
+        block.language is None
+        or block.language.split("-", maxsplit=1)[0].casefold()
+        == configured_primary_language.casefold()
+    )
+
+
+def _english_word_is_accepted(word: str) -> bool:
+    """Prüft einen deutschen Rechtschreibkandidaten gegen en-US."""
+    matches = LanguageToolClient().check(text=word, language="en-US")
+    return not any(match.issue_type == "misspelling" for match in matches)
+
+
+def _english_word_findings_for_block(
+    block: TextBlock,
+    *,
+    block_offset: int,
+    findings: Sequence[Finding],
+) -> list[Finding]:
+    """Findet als Englisch bestätigte Rechtschreibkandidaten eines Blocks."""
+    block_end = block_offset + len(block.text)
+
+    return [
+        finding
+        for finding in findings
+        if (
+            finding.category == "misspelling"
+            and block_offset <= finding.offset
+            and finding.offset + finding.length <= block_end
+            and block.text[
+                finding.offset - block_offset : finding.offset
+                - block_offset
+                + finding.length
+            ].isalpha()
+            and _english_word_is_accepted(
+                block.text[
+                    finding.offset - block_offset : finding.offset
+                    - block_offset
+                    + finding.length
+                ]
+            )
+        )
+    ]
+
+
+def _unmarked_english_findings_for_block(
+    block: TextBlock,
+    *,
+    block_offset: int,
+    findings: Sequence[Finding],
+    url: str,
+    profile: str,
+) -> tuple[list[Finding], set[tuple[int, int]]]:
+    """Ersetzt bestätigte englische Wortfolgen eines Blocks durch einen HTML-Hinweis."""
+    english_word_findings = _english_word_findings_for_block(
+        block,
+        block_offset=block_offset,
+        findings=findings,
+    )
+    grouped_findings: list[list[Finding]] = []
+
+    for finding in english_word_findings:
+        if not grouped_findings:
+            grouped_findings.append([finding])
+            continue
+
+        previous_finding = grouped_findings[-1][-1]
+        separator = block.text[
+            previous_finding.offset
+            + previous_finding.length
+            - block_offset : finding.offset - block_offset
+        ]
+        if separator.isspace():
+            grouped_findings[-1].append(finding)
+        else:
+            grouped_findings.append([finding])
+
+    replacement_findings = [
+        Finding(
+            url=url,
+            category="HTML_LANGUAGE",
+            severity="warning",
+            message=(
+                'Englischer Ausdruck ist nicht mit lang="en" oder '
+                'lang="en-US" ausgezeichnet.'
+            ),
+            offset=group[0].offset,
+            length=group[-1].offset + group[-1].length - group[0].offset,
+            suggestions=('lang="en-US"',),
+            context=findings[0].context if findings else block.text,
+            profile=profile,
+            source_rule_id="MISSING_ENGLISH_LANG",
+        )
+        for group in grouped_findings
+    ]
+    replaced_finding_keys = {
+        (finding.offset, finding.length) for finding in english_word_findings
+    }
+    return replacement_findings, replaced_finding_keys
+
+
+def _replace_unmarked_english_word_findings(
+    blocks: tuple[TextBlock, ...],
+    findings: list[Finding],
+    *,
+    language: str,
+    url: str,
+    profile: str,
+) -> list[Finding]:
+    """Ersetzt englische Rechtschreibkandidaten ohne HTML-Sprache durch Hinweise."""
+    replacement_findings: list[Finding] = []
+    replaced_finding_keys: set[tuple[int, int]] = set()
+    block_offset = 0
+
+    for block in blocks:
+        if _is_german_or_unspecified_block(
+            block,
+            configured_language=language,
+        ):
+            block_replacements, block_replaced_keys = (
+                _unmarked_english_findings_for_block(
+                    block,
+                    block_offset=block_offset,
+                    findings=findings,
+                    url=url,
+                    profile=profile,
+                )
+            )
+            replacement_findings.extend(block_replacements)
+            replaced_finding_keys.update(block_replaced_keys)
+
+        block_offset += len(block.text) + 1
+
+    remaining_findings = [
+        finding
+        for finding in findings
+        if (finding.offset, finding.length) not in replaced_finding_keys
+    ]
+    return sorted(
+        [*remaining_findings, *replacement_findings],
+        key=lambda finding: finding.offset,
+    )
+
+
 def _check_page_blocks(
     blocks: tuple[TextBlock, ...],
     *,
@@ -120,4 +271,11 @@ def _check_page_blocks(
             for finding in batch_findings
         )
 
+    findings = _replace_unmarked_english_word_findings(
+        blocks,
+        findings,
+        language=language,
+        url=url,
+        profile=profile,
+    )
     return findings, len(blocks)
