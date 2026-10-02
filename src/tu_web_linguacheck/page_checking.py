@@ -1,6 +1,7 @@
 """Lokale LanguageTool-Prüfung von Seiteninhalten."""
 
 from collections.abc import Sequence
+from unicodedata import combining
 
 from tu_web_linguacheck.findings import (
     filter_ignored_terms,
@@ -111,34 +112,80 @@ def _english_word_is_accepted(word: str) -> bool:
     return not any(match.issue_type == "misspelling" for match in matches)
 
 
+def _is_word_character(character: str) -> bool:
+    """Prüft, ob ein Zeichen zu einem Wort gehört."""
+    return character.isalnum() or character == "_" or combining(character) != 0
+
+
+def _finding_is_misspelling_in_block(
+    finding: Finding,
+    *,
+    block_offset: int,
+    block_end: int,
+) -> bool:
+    """Prüft, ob ein Rechtschreibfund vollständig innerhalb eines Blocks liegt."""
+    return (
+        finding.category == "misspelling"
+        and block_offset <= finding.offset
+        and finding.offset + finding.length <= block_end
+    )
+
+
+def _has_word_boundaries(text: str, *, start: int, end: int) -> bool:
+    """Prüft, ob vor und nach einem Bereich keine Wortzeichen stehen."""
+    character_before = text[start - 1] if start > 0 else ""
+    character_after = text[end] if end < len(text) else ""
+    return not _is_word_character(character_before) and not _is_word_character(
+        character_after
+    )
+
+
+def _is_accepted_english_word_candidate(
+    block: TextBlock,
+    finding: Finding,
+    *,
+    block_offset: int,
+    block_end: int,
+) -> bool:
+    """Prüft, ob ein vollständiger Rechtschreibfund ein englischer Kandidat ist."""
+    if not _finding_is_misspelling_in_block(
+        finding,
+        block_offset=block_offset,
+        block_end=block_end,
+    ):
+        return False
+
+    candidate_start = finding.offset - block_offset
+    candidate_end = candidate_start + finding.length
+    candidate = block.text[candidate_start:candidate_end]
+    return (
+        len(candidate) >= 3
+        and candidate.isalpha()
+        and _has_word_boundaries(
+            block.text,
+            start=candidate_start,
+            end=candidate_end,
+        )
+        and _english_word_is_accepted(candidate)
+    )
+
+
 def _english_word_findings_for_block(
     block: TextBlock,
     *,
     block_offset: int,
     findings: Sequence[Finding],
 ) -> list[Finding]:
-    """Findet als Englisch bestätigte Rechtschreibkandidaten eines Blocks."""
+    """Findet als Englisch bestätigte vollständige Rechtschreibkandidaten."""
     block_end = block_offset + len(block.text)
-
     return [
         finding
         for finding in findings
-        if (
-            finding.category == "misspelling"
-            and block_offset <= finding.offset
-            and finding.offset + finding.length <= block_end
-            and block.text[
-                finding.offset - block_offset : finding.offset
-                - block_offset
-                + finding.length
-            ].isalpha()
-            and _english_word_is_accepted(
-                block.text[
-                    finding.offset - block_offset : finding.offset
-                    - block_offset
-                    + finding.length
-                ]
-            )
+        if _is_accepted_english_word_candidate(
+            block,
+            finding,
+            block_offset=block_offset,
+            block_end=block_end,
         )
     ]
 

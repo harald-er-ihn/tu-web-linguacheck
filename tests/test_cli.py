@@ -197,6 +197,73 @@ def test_check_page_blocks_reports_unmarked_consecutive_english_words(
     assert findings[0].context == "Das customer success management verbessert."
 
 
+def test_check_page_blocks_ignores_short_and_partial_english_candidates(
+    monkeypatch,
+) -> None:
+    """Ignoriert kurze Kandidaten und Fragmente innerhalb deutscher Wörter."""
+    text = "Rücksicht, Störung, Körperkontakt und 5 Ds."
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        if language == "de-DE":
+            return [
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=text.index("Ru"),
+                    length=2,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=text.index("rung"),
+                    length=4,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=text.index("Ko"),
+                    length=2,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=text.index("Ds"),
+                    length=2,
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+            ]
+
+        assert language == "en-US"
+        assert text in {"Ru", "rung", "Ko", "Ds"}
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.page_checking.LanguageToolClient.check",
+        fake_check,
+    )
+
+    findings, checked_blocks = _check_page_blocks(
+        (TextBlock(text=text, language="de"),),
+        language="de-DE",
+        url="https://example.org/startseite/",
+        profile="generic-de",
+    )
+
+    assert checked_blocks == 1
+    assert {finding.category for finding in findings} == {"misspelling"}
+
+
 def test_check_page_blocks_ignores_english_words_with_english_html_language(
     monkeypatch,
 ) -> None:
