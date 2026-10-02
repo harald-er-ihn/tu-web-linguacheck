@@ -114,7 +114,9 @@ def _english_word_is_accepted(word: str) -> bool:
 
 def _is_word_character(character: str) -> bool:
     """Prüft, ob ein Zeichen zu einem Wort gehört."""
-    return character.isalnum() or character == "_" or combining(character) != 0
+    return bool(character) and (
+        character.isalnum() or character == "_" or combining(character) != 0
+    )
 
 
 def _finding_is_misspelling_in_block(

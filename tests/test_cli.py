@@ -197,6 +197,59 @@ def test_check_page_blocks_reports_unmarked_consecutive_english_words(
     assert findings[0].context == "Das customer success management verbessert."
 
 
+def test_check_page_blocks_reports_english_words_at_block_boundaries(
+    monkeypatch,
+) -> None:
+    """Meldet englische Wörter am Anfang und Ende eines Textblocks."""
+    text = "Registration und customer"
+
+    def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
+        if language == "de-DE":
+            return [
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=0,
+                    length=len("Registration"),
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+                LanguageToolMatch(
+                    message="Möglicher Rechtschreibfehler.",
+                    offset=text.index("customer"),
+                    length=len("customer"),
+                    rule_id="GERMAN_SPELLER_RULE",
+                    category="TYPOS",
+                    issue_type="misspelling",
+                    replacements=(),
+                ),
+            ]
+
+        assert language == "en-US"
+        assert text in {"Registration", "customer"}
+        return []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.page_checking.LanguageToolClient.check",
+        fake_check,
+    )
+
+    findings, checked_blocks = _check_page_blocks(
+        (TextBlock(text=text, language="de"),),
+        language="de-DE",
+        url="https://example.org/startseite/",
+        profile="generic-de",
+    )
+
+    assert checked_blocks == 1
+    assert [finding.category for finding in findings] == [
+        "HTML_LANGUAGE",
+        "HTML_LANGUAGE",
+    ]
+    assert [finding.offset for finding in findings] == [0, text.index("customer")]
+
+
 def test_check_page_blocks_ignores_short_and_partial_english_candidates(
     monkeypatch,
 ) -> None:
