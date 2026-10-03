@@ -8,6 +8,7 @@ from tu_web_linguacheck.findings import (
     finding_from_languagetool_match,
 )
 from tu_web_linguacheck.html_content import TextBlock
+from tu_web_linguacheck.language_detection import find_english_text_spans
 from tu_web_linguacheck.languagetool import LanguageToolClient
 from tu_web_linguacheck.models import Finding
 from tu_web_linguacheck.text_batches import batch_page_blocks
@@ -106,12 +107,6 @@ def _is_german_or_unspecified_block(
     )
 
 
-def _english_word_is_accepted(word: str) -> bool:
-    """Prüft einen deutschen Rechtschreibkandidaten gegen en-US."""
-    matches = LanguageToolClient().check(text=word, language="en-US")
-    return not any(match.issue_type == "misspelling" for match in matches)
-
-
 def _is_word_character(character: str) -> bool:
     """Prüft, ob ein Zeichen zu einem Wort gehört."""
     return bool(character) and (
@@ -142,14 +137,28 @@ def _has_word_boundaries(text: str, *, start: int, end: int) -> bool:
     )
 
 
+def _is_within_english_text_span(
+    *,
+    start: int,
+    end: int,
+    english_text_spans: Sequence[tuple[int, int]],
+) -> bool:
+    """Prüft, ob ein Bereich vollständig in einer englischen Textspanne liegt."""
+    return any(
+        span_start <= start and end <= span_end
+        for span_start, span_end in english_text_spans
+    )
+
+
 def _is_accepted_english_word_candidate(
     block: TextBlock,
     finding: Finding,
     *,
     block_offset: int,
     block_end: int,
+    english_text_spans: Sequence[tuple[int, int]],
 ) -> bool:
-    """Prüft, ob ein vollständiger Rechtschreibfund ein englischer Kandidat ist."""
+    """Prüft, ob ein vollständiger Rechtschreibfund in einer englischen Spanne liegt."""
     if not _finding_is_misspelling_in_block(
         finding,
         block_offset=block_offset,
@@ -168,7 +177,11 @@ def _is_accepted_english_word_candidate(
             start=candidate_start,
             end=candidate_end,
         )
-        and _english_word_is_accepted(candidate)
+        and _is_within_english_text_span(
+            start=candidate_start,
+            end=candidate_end,
+            english_text_spans=english_text_spans,
+        )
     )
 
 
@@ -178,8 +191,9 @@ def _english_word_findings_for_block(
     block_offset: int,
     findings: Sequence[Finding],
 ) -> list[Finding]:
-    """Findet als Englisch bestätigte vollständige Rechtschreibkandidaten."""
+    """Findet vollständige Rechtschreibkandidaten in englischen Textspannen."""
     block_end = block_offset + len(block.text)
+    english_text_spans = find_english_text_spans(block.text)
     return [
         finding
         for finding in findings
@@ -188,6 +202,7 @@ def _english_word_findings_for_block(
             finding,
             block_offset=block_offset,
             block_end=block_end,
+            english_text_spans=english_text_spans,
         )
     ]
 

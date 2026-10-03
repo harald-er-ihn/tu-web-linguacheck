@@ -86,18 +86,6 @@ def test_check_page_blocks_batches_consecutive_blocks_of_same_language(
                     replacements=("ist",),
                 )
             ]
-        if (text, language) == ("istf", "en-US"):
-            return [
-                LanguageToolMatch(
-                    message="English spelling error.",
-                    offset=0,
-                    length=4,
-                    rule_id="ENGLISH_SPELLER_RULE",
-                    category="TYPOS",
-                    issue_type="misspelling",
-                    replacements=(),
-                )
-            ]
         return []
 
     monkeypatch.setattr(
@@ -120,7 +108,6 @@ def test_check_page_blocks_batches_consecutive_blocks_of_same_language(
     assert checked_texts == [
         ("Überschrift\nDas istf ein Test.", "de-DE"),
         ("English text.", "en-US"),
-        ("istf", "en-US"),
     ]
     assert checked_blocks == 3
     assert len(findings) == 1
@@ -131,7 +118,7 @@ def test_check_page_blocks_batches_consecutive_blocks_of_same_language(
 def test_check_page_blocks_reports_unmarked_consecutive_english_words(
     monkeypatch,
 ) -> None:
-    """Meldet unmarkierte englische Wortfolgen als HTML-Sprachhinweis."""
+    """Meldet unmarkierte englische Wortfolgen anhand ihres Kontexts."""
 
     def fake_check(_self, *, text: str, language: str) -> list[LanguageToolMatch]:
         if (text, language) == ("Das customer success management verbessert.", "de-DE"):
@@ -165,13 +152,20 @@ def test_check_page_blocks_reports_unmarked_consecutive_english_words(
                 ),
             ]
 
-        assert language == "en-US"
-        assert text in {"customer", "success", "management"}
-        return []
+        raise AssertionError(
+            f"Unerwartete LanguageTool-Prüfung für {text!r} mit {language!r}."
+        )
 
     monkeypatch.setattr(
         "tu_web_linguacheck.page_checking.LanguageToolClient.check",
         fake_check,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.page_checking.find_english_text_spans",
+        lambda text: (
+            ((4, 31),) if text == "Das customer success management verbessert." else ()
+        ),
+        raising=False,
     )
 
     findings, checked_blocks = _check_page_blocks(
