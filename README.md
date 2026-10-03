@@ -53,6 +53,23 @@ Schnellstart für eine einzelne Seite:
 tu-web-linguacheck check-url URL CONFIG_PATH --report DATEI.html
 ```
 
+## Fehlende englische Sprachkennzeichnungen
+
+`check-url` und `check-crawl` prüfen standardmäßig auch sichtbare deutsche oder
+sprachlose HTML-Textblöcke auf vermutlich englische Textspannen ohne
+`lang="en"` oder `lang="en-US"`. Der gezielte Modus
+`--missing-english-lang-only` gibt ausschließlich diese Hinweise aus und lädt
+keine Terminologiequellen.
+
+Die Erkennung kombiniert deutsche LanguageTool-Rechtschreibfunde mit einer
+lokalen kontextbezogenen Sprachidentifikation für Deutsch und Englisch.
+Kandidaten müssen mindestens drei Zeichen lang sein, vollständige Wortgrenzen
+haben und vollständig in einer erkannten englischen Textspanne liegen.
+
+Die Hinweise sind eine Unterstützung zur fachlichen Prüfung. Insbesondere
+Eigennamen, Abkürzungen und mehrdeutige Begriffe können weiterhin als
+englischsprachige Textspanne erkannt werden.
+
 ## Architektur
 
 Die Architekturübersicht zeigt die aktuell implementierten Komponenten,
@@ -80,6 +97,7 @@ lokal mit `tools/generate_architecture_diagram.sh` erzeugt.
 
 - Python 3.12
 - Beautiful Soup 4
+- Lingua Language Detector für lokale Kontext-Sprachidentifikation
 - markdown-it-py
 - Pydantic
 - PyYAML

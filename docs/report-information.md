@@ -73,6 +73,20 @@ Regelmenge richtet sich nach der effektiven HTML-Sprache eines Textsegments:
 Lokale TU-Terminologie wird derzeit nur für deutsche und englische Segmente
 geprüft.
 
+## Fehlende englische Sprachkennzeichnungen
+
+Bei deutschen oder sprachlosen sichtbaren HTML-Textblöcken kann das Werkzeug
+zusätzlich englische Textspannen ohne `lang="en"` oder `lang="en-US"` als
+`HTML_LANGUAGE`-Hinweis melden. Die Prüfung kombiniert deutsche
+LanguageTool-Rechtschreibfunde mit lokaler kontextbezogener
+Sprachidentifikation für Deutsch und Englisch.
+
+Ein Hinweis entsteht nur für vollständige Kandidaten mit mindestens drei
+Zeichen, die vollständig innerhalb einer erkannten englischen Textspanne
+liegen. Der Fundkontext muss dennoch fachlich geprüft werden: Eigennamen,
+Abkürzungen und mehrdeutige Begriffe können trotz deutschen Satzkontexts als
+englischsprachig erkannt werden.
+
 ## Datenschutz und lokale Verarbeitung
 
 Website-Texte, Crawl-Daten und Prüfergebnisse bleiben lokal. Das Werkzeug
