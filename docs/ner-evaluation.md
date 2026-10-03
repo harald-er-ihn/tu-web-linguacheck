@@ -57,6 +57,30 @@ werden.
 - Erwartete Personenspanne: `Stephan Grigat`
 - Erwartete Nicht-Personenspanne: `Projektleitung`
 
+### `person-single-saloua`
+
+- Textauszug: `Saloua ist Referentin für Rassismuskritik.`
+- Erwartete Personenspanne: `Saloua`
+- Erwartete Nicht-Personenspanne: keine
+
+### `person-single-sidney`
+
+- Textauszug: `Sidney ist Politikwissenschaftler.`
+- Erwartete Personenspanne: `Sidney`
+- Erwartete Nicht-Personenspanne: keine
+
+### `person-single-atahan`
+
+- Textauszug: `Atahan moderiert den Workshop.`
+- Erwartete Personenspanne: `Atahan`
+- Erwartete Nicht-Personenspanne: `Workshop`
+
+### `person-single-grigat`
+
+- Textauszug: `Grigat hält einen Vortrag.`
+- Erwartete Personenspanne: `Grigat`
+- Erwartete Nicht-Personenspanne: keine
+
 ### `english-active-bystanding`
 
 - Textauszug: `Dieses Modell bietet Orientierung für active Bystanding.`
@@ -99,21 +123,24 @@ nicht allein jede vom Modell erkannte Personenentität übernehmen.
 
 ## Lokale Modellauswertung
 
-Die folgenden Ergebnisse wurden lokal mit spaCy `3.8.16` gegen die zehn Fälle
-dieser Goldstandard-Stichprobe ermittelt. Das kleine und das große deutsche
-Modell wurden ausschließlich für die Evaluation in einer lokalen virtuellen
-Umgebung installiert.
+Die folgende Auswertung wurde lokal mit spaCy `3.8.16` und
+`de_core_news_lg` `3.8.0` gegen die 14 Fälle dieser Goldstandard-Stichprobe
+ermittelt. Das große deutsche Modell wurde ausschließlich für die Evaluation
+in einer lokalen virtuellen Umgebung installiert.
 
 | Modell | Version | Personen | Fehlalarme | Präzision | Recall |
 | --- | --- | ---: | ---: | ---: | ---: |
-| `de_core_news_sm` | `3.8.0` | 5 von 5 | `Workshop` | 5 von 6 | 5 von 5 |
-| `de_core_news_lg` | `3.8.0` | 5 von 5 | keine | 5 von 5 | 5 von 5 |
+| `de_core_news_lg` | `3.8.0` | 9 von 9 | keine | 9 von 9 | 9 von 9 |
 
-Das große Modell erkannte in dieser Stichprobe alle erwarteten Personen und
-klassifizierte keinen der dokumentierten Nicht-Personenfälle als Person. Die
-Stichprobe ist jedoch zu klein für eine automatische Unterdrückung von
-Sprachhinweisen. Sie rechtfertigt zunächst nur eine weiterführende Evaluation
-des großen Modells.
+Das kleine Modell `de_core_news_sm` wurde bislang nur gegen die ursprünglichen
+zehn Fälle ausgewertet. Es erkannte damals 5 von 5 Personen, klassifizierte
+jedoch `Workshop` fälschlich als Personenentität.
+
+Das große Modell erkannte in der erweiterten Stichprobe alle erwarteten
+Personen und klassifizierte keinen der dokumentierten Nicht-Personenfälle als
+Person. Die Stichprobe ist jedoch weiterhin zu klein für eine automatische
+Unterdrückung von Sprachhinweisen. Sie rechtfertigt zunächst nur eine
+weiterführende Evaluation des großen Modells.
 
 ## Status
 
