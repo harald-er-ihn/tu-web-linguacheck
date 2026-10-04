@@ -88,6 +88,12 @@ werden.
 - Erwartete Personenspanne: `Grigat`
 - Erwartete Nicht-Personenspanne: keine
 
+### `english-teach-and-talk`
+
+- Textauszug: `Antisemitismus an Hochschulen – Teach & Talk für Lehrende`
+- Erwartete Personenspanne: keine
+- Erwartete Nicht-Personenspanne: `Teach & Talk für Lehrende`
+
 ### `english-distract`
 
 - Textauszug: `Distract (Ablenken)`
@@ -137,7 +143,7 @@ nicht allein jede vom Modell erkannte Personenentität übernehmen.
 ## Lokale Modellauswertung
 
 Die folgende Auswertung wurde lokal mit spaCy `3.8.16` und
-`de_core_news_lg` `3.8.0` gegen die 16 Fälle dieser Goldstandard-Stichprobe
+`de_core_news_lg` `3.8.0` gegen die 17 Fälle dieser Goldstandard-Stichprobe
 ermittelt. Das große deutsche Modell wurde ausschließlich für die Evaluation
 in einer lokalen virtuellen Umgebung installiert.
 
