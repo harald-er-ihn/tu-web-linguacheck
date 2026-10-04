@@ -57,6 +57,13 @@ werden.
 - Erwartete Personenspanne: `Stephan Grigat`
 - Erwartete Nicht-Personenspanne: `Projektleitung`
 
+### `person-hanin-ghazalin`
+
+- Textauszug: `Hanin Ghazalin ist bereits seit zehn Monaten als
+  Kindertagespflegeperson bei den „9x klugen Zwergen“ tätig.`
+- Erwartete Personenspanne: `Hanin Ghazalin`
+- Erwartete Nicht-Personenspanne: keine
+
 ### `person-single-saloua`
 
 - Textauszug: `Saloua ist Referentin für Rassismuskritik.`
@@ -124,13 +131,13 @@ nicht allein jede vom Modell erkannte Personenentität übernehmen.
 ## Lokale Modellauswertung
 
 Die folgende Auswertung wurde lokal mit spaCy `3.8.16` und
-`de_core_news_lg` `3.8.0` gegen die 14 Fälle dieser Goldstandard-Stichprobe
+`de_core_news_lg` `3.8.0` gegen die 15 Fälle dieser Goldstandard-Stichprobe
 ermittelt. Das große deutsche Modell wurde ausschließlich für die Evaluation
 in einer lokalen virtuellen Umgebung installiert.
 
 | Modell | Version | Personen | Fehlalarme | Präzision | Recall |
 | --- | --- | ---: | ---: | ---: | ---: |
-| `de_core_news_lg` | `3.8.0` | 9 von 9 | keine | 9 von 9 | 9 von 9 |
+| `de_core_news_lg` | `3.8.0` | 10 von 10 | keine | 10 von 10 | 10 von 10 |
 
 Das kleine Modell `de_core_news_sm` wurde bislang nur gegen die ursprünglichen
 zehn Fälle ausgewertet. Es erkannte damals 5 von 5 Personen, klassifizierte
