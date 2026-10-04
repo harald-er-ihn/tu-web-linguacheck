@@ -88,6 +88,12 @@ werden.
 - Erwartete Personenspanne: `Grigat`
 - Erwartete Nicht-Personenspanne: keine
 
+### `english-distract`
+
+- Textauszug: `Distract (Ablenken)`
+- Erwartete Personenspanne: keine
+- Erwartete Nicht-Personenspanne: `Distract`
+
 ### `english-active-bystanding`
 
 - Textauszug: `Dieses Modell bietet Orientierung für active Bystanding.`
@@ -131,23 +137,23 @@ nicht allein jede vom Modell erkannte Personenentität übernehmen.
 ## Lokale Modellauswertung
 
 Die folgende Auswertung wurde lokal mit spaCy `3.8.16` und
-`de_core_news_lg` `3.8.0` gegen die 15 Fälle dieser Goldstandard-Stichprobe
+`de_core_news_lg` `3.8.0` gegen die 16 Fälle dieser Goldstandard-Stichprobe
 ermittelt. Das große deutsche Modell wurde ausschließlich für die Evaluation
 in einer lokalen virtuellen Umgebung installiert.
 
 | Modell | Version | Personen | Fehlalarme | Präzision | Recall |
 | --- | --- | ---: | ---: | ---: | ---: |
-| `de_core_news_lg` | `3.8.0` | 10 von 10 | keine | 10 von 10 | 10 von 10 |
+| `de_core_news_lg` | `3.8.0` | 10 von 10 | `Distract` | 10 von 11 | 10 von 10 |
 
 Das kleine Modell `de_core_news_sm` wurde bislang nur gegen die ursprünglichen
 zehn Fälle ausgewertet. Es erkannte damals 5 von 5 Personen, klassifizierte
 jedoch `Workshop` fälschlich als Personenentität.
 
-Das große Modell erkannte in der erweiterten Stichprobe alle erwarteten
-Personen und klassifizierte keinen der dokumentierten Nicht-Personenfälle als
-Person. Die Stichprobe ist jedoch weiterhin zu klein für eine automatische
-Unterdrückung von Sprachhinweisen. Sie rechtfertigt zunächst nur eine
-weiterführende Evaluation des großen Modells.
+Das große Modell erkannte alle erwarteten Personen. Im echten CFV-Crawl-Fall
+`Distract (Ablenken)` klassifizierte es jedoch den englischen Ausdruck
+`Distract` fälschlich als Person. Daher darf das Modell derzeit nicht zur
+automatischen Unterdrückung von Sprachhinweisen verwendet werden. Die
+Stichprobe rechtfertigt zunächst nur eine weiterführende Evaluation.
 
 ## Status
 
