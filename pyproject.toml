@@ -15,6 +15,8 @@ authors = [
 dependencies = [
   "beautifulsoup4>=4.12",
   "lingua-language-detector==2.2.0",
+  "spacy==3.8.16",
+  "de_core_news_lg @ https://github.com/explosion/spacy-models/releases/download/de_core_news_lg-3.8.0/de_core_news_lg-3.8.0-py3-none-any.whl",
   "markdown-it-py>=4.0",
   "pydantic>=2.0",
   "PyYAML>=6.0",
