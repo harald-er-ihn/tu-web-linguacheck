@@ -51,6 +51,7 @@ class Finding(BaseModel):
     source_term: str | None = Field(default=None, min_length=1)
     occurrence_count: int | None = Field(default=None, ge=1)
     target_context: str | None = Field(default=None, min_length=1)
+    ner_person_name: str | None = Field(default=None, min_length=1)
 
     @field_validator("url", "source_url")
     @classmethod

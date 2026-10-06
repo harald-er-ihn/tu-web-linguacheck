@@ -38,11 +38,12 @@ tu-web-linguacheck COMMAND --help
 - `validate-config`: Eine lokale YAML-Konfiguration laden und validieren.
   Erfordert `CONFIG_PATH`.
 - `check-url`: Genau eine erlaubte HTML-Seite prüfen.
-  Erfordert `URL CONFIG_PATH`; optional sind `--report DATEI.html` und
-  `--pdf-report DATEI.pdf`.
+  Erfordert `URL CONFIG_PATH`; optional sind `--ner-person-hints`,
+  `--report DATEI.html` und `--pdf-report DATEI.pdf`.
 - `check-crawl`: Erlaubte HTML-Seiten crawlen und sichtbare Texte prüfen.
   Erfordert `URL CONFIG_PATH`; optional sind `--stay-under-start-path`,
-  `--report DATEI.html` und `--pdf-report DATEI.pdf`.
+  `--missing-english-lang-only`, `--ner-person-hints`, `--report DATEI.html`
+  und `--pdf-report DATEI.pdf`.
 - `check-translation`: Deutsche Begriffe gegen die englische Sprachversion
   einer Seite prüfen. Erfordert `URL CONFIG_PATH`; optional sind
   `--report DATEI.html` und `--pdf-report DATEI.pdf`.
@@ -69,6 +70,13 @@ haben und vollständig in einer erkannten englischen Textspanne liegen.
 Die Hinweise sind eine Unterstützung zur fachlichen Prüfung. Insbesondere
 Eigennamen, Abkürzungen und mehrdeutige Begriffe können weiterhin als
 englischsprachige Textspanne erkannt werden.
+
+Mit `--ner-person-hints` ergänzt das lokal ausgeführte spaCy-Modell
+`de_core_news_lg` bei `HTML_LANGUAGE`-Hinweisen eine Prüfmarkierung für
+mögliche vollständige Personennamen. Die Markierung ist ausschließlich
+additiv: Der ursprüngliche Hinweis bleibt sichtbar und wird weder verändert
+noch automatisch unterdrückt. Sie unterstützt die redaktionelle Prüfung und
+ersetzt keine fachlich bestätigten lokalen Ausnahmen in `ignored_terms`.
 
 ## Architektur
 

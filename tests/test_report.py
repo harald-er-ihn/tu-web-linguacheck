@@ -710,3 +710,39 @@ def test_write_html_report_omits_cfv_example_without_cfv_terminology(tmp_path) -
     assert '<section id="translation-check-information">' in html
     assert "data/tu-terminology.local.json: 1200 Einträge" in html
     assert "Begleitservice wird als accompaniment service empfohlen" not in html
+
+
+def test_write_html_report_shows_ner_person_hint(tmp_path) -> None:
+    """Der Bericht zeigt die NER-Personenmarkierung am bestehenden Fund."""
+    report_path = tmp_path / "report.html"
+    finding = Finding(
+        url="https://example.org/",
+        category="HTML_LANGUAGE",
+        severity="warning",
+        message="Englischer Ausdruck ist nicht ausgezeichnet.",
+        offset=0,
+        length=len("Saloua"),
+        suggestions=('lang="en-US"',),
+        context="Saloua Mohammed ist Referentin.",
+        profile="tu-de",
+        source_rule_id="MISSING_ENGLISH_LANG",
+        ner_person_name="Saloua Mohammed",
+    )
+
+    write_html_report(
+        report_path,
+        crawled_pages=1,
+        checked_blocks=1,
+        findings=[finding],
+        context=ReportContext(
+            start_url="https://example.org/",
+            profile="tu-de",
+            language="de-DE",
+        ),
+    )
+
+    html = report_path.read_text(encoding="utf-8")
+
+    assert "HTML_LANGUAGE" in html
+    assert "Saloua" in html
+    assert "NER-Prüfmarkierung: möglicher Personenname „Saloua Mohammed“." in html

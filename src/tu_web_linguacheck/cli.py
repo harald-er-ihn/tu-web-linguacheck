@@ -30,6 +30,7 @@ from tu_web_linguacheck.languagetool import (
     LanguageToolUnavailableError,
 )
 from tu_web_linguacheck.models import CrawledPage, Finding
+from tu_web_linguacheck.ner import mark_html_language_findings_with_person_hints
 from tu_web_linguacheck.page_checking import (
     _check_page_blocks,
     _check_page_text,
@@ -158,6 +159,11 @@ def _display_findings(findings: Sequence[Finding]) -> None:
         else:
             typer.echo(f"Vorschläge: {', '.join(finding.suggestions) or '-'}")
             typer.echo(f"Fundstelle: {matched_text}")
+            if finding.ner_person_name is not None:
+                typer.echo(
+                    "NER-Prüfmarkierung: möglicher Personenname "
+                    f"„{finding.ner_person_name}“."
+                )
         typer.echo(f"Position: {finding.offset}–{end_offset}")
 
         context_start = max(0, finding.offset - 80)
@@ -283,6 +289,14 @@ def check_url(  # pylint: disable=too-many-arguments,too-many-positional-argumen
             'Texten ohne lang="en" oder lang="en-US" ausgezeichnet sind.'
         ),
     ),
+    ner_person_hints: bool = typer.Option(
+        False,
+        "--ner-person-hints",
+        help=(
+            "Markiert HTML-Sprachhinweise zusätzlich, wenn die lokale "
+            "Eigennamenerkennung einen möglichen Personennamen erkennt."
+        ),
+    ),
     report_path: Path | None = typer.Option(
         None, "--report", help="Schreibt einen HTML-Bericht in die angegebene Datei."
     ),
@@ -321,6 +335,8 @@ def check_url(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         typer.echo(str(error))
         raise typer.Exit(code=1) from error
 
+    if ner_person_hints:
+        findings = mark_html_language_findings_with_person_hints(findings)
     typer.echo(f"Prüfblöcke: {checked_blocks}")
     _display_findings(findings)
 
@@ -525,6 +541,67 @@ def _check_crawled_pages(
     return findings, checked_blocks
 
 
+def _ner_person_hint_command_parts(
+    ner_person_hints: bool,
+) -> tuple[str, ...]:
+    """Gibt den optionalen NER-Schalter für reproduzierbare Befehle zurück."""
+    return ("--ner-person-hints",) if ner_person_hints else ()
+
+
+def _crawl_report_data(  # pylint: disable=too-many-arguments
+    *,
+    url: str,
+    config_path: Path,
+    stay_under_start_path: bool,
+    missing_english_lang_only: bool,
+    ner_person_hints: bool,
+    report_path: Path | None,
+    pdf_report_path: Path | None,
+    config: ProjectConfig,
+    pages: Sequence[CrawledPage],
+    checked_blocks: int,
+    findings: Sequence[Finding],
+) -> _ReportData:
+    """Erstellt Berichtsdaten für einen regulären Crawl."""
+    return _ReportData(
+        crawled_pages=len(pages),
+        checked_blocks=checked_blocks,
+        findings=findings,
+        context=ReportContext(
+            start_url=url,
+            profile=config.profile,
+            language=config.check.language,
+            checked_urls=tuple(page.url for page in pages),
+            command=" ".join(
+                part
+                for part in (
+                    "tu-web-linguacheck",
+                    "check-crawl",
+                    url,
+                    str(config_path),
+                    "--stay-under-start-path" if stay_under_start_path else None,
+                    "--missing-english-lang-only"
+                    if missing_english_lang_only
+                    else None,
+                    *_ner_person_hint_command_parts(ner_person_hints),
+                    "--report" if report_path is not None else None,
+                    str(report_path) if report_path is not None else None,
+                    "--pdf-report" if pdf_report_path is not None else None,
+                    str(pdf_report_path) if pdf_report_path is not None else None,
+                )
+                if part is not None
+            ),
+            config_path=str(config_path),
+            allowed_domains=tuple(config.crawl.allowed_domains),
+            max_depth=config.crawl.max_depth,
+            max_pages=config.crawl.max_pages,
+            requests_per_second=config.crawl.requests_per_second,
+            obey_robots_txt=config.crawl.obey_robots_txt,
+            stay_under_start_path=stay_under_start_path,
+        ),
+    )
+
+
 @app.command()
 def check_crawl(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     url: str,
@@ -540,6 +617,14 @@ def check_crawl(  # pylint: disable=too-many-arguments,too-many-positional-argum
         help=(
             "Prüft ausschließlich, ob vermutlich englische Ausdrücke in deutschen "
             'Texten ohne lang="en" oder lang="en-US" ausgezeichnet sind.'
+        ),
+    ),
+    ner_person_hints: bool = typer.Option(
+        False,
+        "--ner-person-hints",
+        help=(
+            "Markiert HTML-Sprachhinweise zusätzlich, wenn die lokale "
+            "Eigennamenerkennung einen möglichen Personennamen erkennt."
         ),
     ),
     report_path: Path | None = typer.Option(
@@ -574,45 +659,24 @@ def check_crawl(  # pylint: disable=too-many-arguments,too-many-positional-argum
         config=config,
         missing_english_lang_only=missing_english_lang_only,
     )
+    if ner_person_hints:
+        findings = mark_html_language_findings_with_person_hints(findings)
     typer.echo(f"Gecrawlte Seiten: {len(pages)}")
     typer.echo(f"Prüfblöcke: {checked_blocks}")
     _display_findings(findings)
 
-    report_data = _ReportData(
-        crawled_pages=len(pages),
+    report_data = _crawl_report_data(
+        url=url,
+        config_path=config_path,
+        stay_under_start_path=stay_under_start_path,
+        missing_english_lang_only=missing_english_lang_only,
+        ner_person_hints=ner_person_hints,
+        report_path=report_path,
+        pdf_report_path=pdf_report_path,
+        config=config,
+        pages=pages,
         checked_blocks=checked_blocks,
         findings=findings,
-        context=ReportContext(
-            start_url=url,
-            profile=config.profile,
-            language=config.check.language,
-            checked_urls=tuple(page.url for page in pages),
-            command=" ".join(
-                part
-                for part in (
-                    "tu-web-linguacheck",
-                    "check-crawl",
-                    url,
-                    str(config_path),
-                    "--stay-under-start-path" if stay_under_start_path else None,
-                    "--missing-english-lang-only"
-                    if missing_english_lang_only
-                    else None,
-                    "--report" if report_path is not None else None,
-                    str(report_path) if report_path is not None else None,
-                    "--pdf-report" if pdf_report_path is not None else None,
-                    str(pdf_report_path) if pdf_report_path is not None else None,
-                )
-                if part is not None
-            ),
-            config_path=str(config_path),
-            allowed_domains=tuple(config.crawl.allowed_domains),
-            max_depth=config.crawl.max_depth,
-            max_pages=config.crawl.max_pages,
-            requests_per_second=config.crawl.requests_per_second,
-            obey_robots_txt=config.crawl.obey_robots_txt,
-            stay_under_start_path=stay_under_start_path,
-        ),
     )
     _write_reports(
         report_path=report_path,

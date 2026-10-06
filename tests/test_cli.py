@@ -6,7 +6,7 @@ from urllib.error import HTTPError
 
 from typer.testing import CliRunner
 
-from tu_web_linguacheck.cli import app
+from tu_web_linguacheck.cli import _display_findings, app
 from tu_web_linguacheck.config import CrawlConfig, ProjectConfig
 from tu_web_linguacheck.html_content import PageContent, TextBlock
 from tu_web_linguacheck.language_links import LanguageLink
@@ -2217,3 +2217,263 @@ def test_check_translation_crawl_continues_after_english_fetch_error(
     ) in result.output
     assert "Geprüfte englische Übersetzungen: 1" in result.output
     assert "Traceback" not in result.output
+
+
+def test_display_findings_shows_ner_person_hint(capsys) -> None:
+    """Die Terminalausgabe ergänzt eine NER-Personenmarkierung am Fund."""
+    finding = Finding(
+        url="https://example.org/",
+        category="HTML_LANGUAGE",
+        severity="warning",
+        message="Englischer Ausdruck ist nicht ausgezeichnet.",
+        offset=0,
+        length=len("Saloua"),
+        suggestions=('lang="en-US"',),
+        context="Saloua Mohammed ist Referentin.",
+        profile="tu-de",
+        source_rule_id="MISSING_ENGLISH_LANG",
+        ner_person_name="Saloua Mohammed",
+    )
+
+    _display_findings([finding])
+
+    output = capsys.readouterr().out
+    assert "Sprachfunde: 1" in output
+    assert "Kategorie: HTML_LANGUAGE" in output
+    assert "Fundstelle: Saloua" in output
+    assert "NER-Prüfmarkierung: möglicher Personenname „Saloua Mohammed“." in output
+
+
+def test_check_url_marks_html_language_findings_with_ner_option(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Der Opt-in-Schalter ergänzt NER-Markierungen an bestehenden Funden."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=0,
+            max_pages=1,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+    finding = Finding(
+        url="https://example.org/",
+        category="HTML_LANGUAGE",
+        severity="warning",
+        message="Englischer Ausdruck ist nicht ausgezeichnet.",
+        offset=0,
+        length=len("Saloua"),
+        suggestions=('lang="en-US"',),
+        context="Saloua Mohammed ist Referentin.",
+        profile="tu-de",
+        source_rule_id="MISSING_ENGLISH_LANG",
+    )
+    marked_finding = finding.model_copy(update={"ner_person_name": "Saloua Mohammed"})
+    marked_inputs: list[list[Finding]] = []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda _path: config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.prepare_crawl_url",
+        lambda _url, _crawl_config: "https://example.org/",
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        lambda _url, _allowed_domains: "<main>Test</main>",
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.extract_page_content",
+        lambda _html: PageContent(
+            title="Testseite",
+            text="Saloua Mohammed ist Referentin.",
+        ),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli._check_url_page_content",
+        lambda *_args, **_kwargs: ([finding], 1),
+    )
+
+    def fake_mark(findings: list[Finding]) -> list[Finding]:
+        marked_inputs.append(findings)
+        return [marked_finding]
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.mark_html_language_findings_with_person_hints",
+        fake_mark,
+        raising=False,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-url",
+            "https://example.org/",
+            str(config_path),
+            "--ner-person-hints",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert marked_inputs == [[finding]]
+    assert "Sprachfunde: 1" in result.output
+    assert "Kategorie: HTML_LANGUAGE" in result.output
+    assert "Fundstelle: Saloua" in result.output
+    assert (
+        "NER-Prüfmarkierung: möglicher Personenname „Saloua Mohammed“." in result.output
+    )
+
+
+def test_check_url_does_not_mark_findings_without_ner_option(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Der Standardlauf ruft die optionale NER-Markierung nicht auf."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=0,
+            max_pages=1,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+    finding = Finding(
+        url="https://example.org/",
+        category="HTML_LANGUAGE",
+        severity="warning",
+        message="Englischer Ausdruck ist nicht ausgezeichnet.",
+        offset=0,
+        length=len("Saloua"),
+        suggestions=('lang="en-US"',),
+        context="Saloua Mohammed ist Referentin.",
+        profile="tu-de",
+        source_rule_id="MISSING_ENGLISH_LANG",
+    )
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda _path: config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.prepare_crawl_url",
+        lambda _url, _crawl_config: "https://example.org/",
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        lambda _url, _allowed_domains: "<main>Test</main>",
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.extract_page_content",
+        lambda _html: PageContent(title="Testseite", text=finding.context),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli._check_url_page_content",
+        lambda *_args, **_kwargs: ([finding], 1),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.mark_html_language_findings_with_person_hints",
+        lambda _findings: (_ for _ in ()).throw(
+            AssertionError("NER darf ohne --ner-person-hints nicht laufen.")
+        ),
+    )
+
+    result = runner.invoke(
+        app,
+        ["check-url", "https://example.org/", str(config_path)],
+    )
+
+    assert result.exit_code == 0
+    assert "Sprachfunde: 1" in result.output
+    assert "NER-Prüfmarkierung:" not in result.output
+
+
+def test_check_crawl_marks_html_language_findings_with_ner_option(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Der Crawl-Opt-in markiert bestehende HTML-Sprachhinweise mit NER."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=0,
+            max_pages=1,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+    page = CrawledPage(
+        url="https://example.org/",
+        depth=0,
+        title="Testseite",
+        text="Saloua Mohammed ist Referentin.",
+    )
+    finding = Finding(
+        url=page.url,
+        category="HTML_LANGUAGE",
+        severity="warning",
+        message="Englischer Ausdruck ist nicht ausgezeichnet.",
+        offset=0,
+        length=len("Saloua"),
+        suggestions=('lang="en-US"',),
+        context=page.text,
+        profile="tu-de",
+        source_rule_id="MISSING_ENGLISH_LANG",
+    )
+    marked_finding = finding.model_copy(update={"ner_person_name": "Saloua Mohammed"})
+    marked_inputs: list[list[Finding]] = []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda _path: config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli._ensure_languagetool_available",
+        lambda _language: None,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.crawl_pages_with_content",
+        lambda **_kwargs: [page],
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli._check_crawled_pages",
+        lambda *_args, **_kwargs: ([finding], 1),
+    )
+
+    def fake_mark(findings: list[Finding]) -> list[Finding]:
+        marked_inputs.append(findings)
+        return [marked_finding]
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.mark_html_language_findings_with_person_hints",
+        fake_mark,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-crawl",
+            "https://example.org/",
+            str(config_path),
+            "--ner-person-hints",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert marked_inputs == [[finding]]
+    assert "Gecrawlte Seiten: 1" in result.output
+    assert "Sprachfunde: 1" in result.output
+    assert "Kategorie: HTML_LANGUAGE" in result.output
+    assert "Fundstelle: Saloua" in result.output
+    assert (
+        "NER-Prüfmarkierung: möglicher Personenname „Saloua Mohammed“." in result.output
+    )

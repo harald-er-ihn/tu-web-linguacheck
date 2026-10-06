@@ -87,6 +87,18 @@ liegen. Der Fundkontext muss dennoch fachlich geprüft werden: Eigennamen,
 Abkürzungen und mehrdeutige Begriffe können trotz deutschen Satzkontexts als
 englischsprachig erkannt werden.
 
+## Lokale NER-Prüfmarkierung für mögliche Personennamen
+
+Mit der Option `--ner-person-hints` kann die lokale Eigennamenerkennung
+`de_core_news_lg` bei `HTML_LANGUAGE`-Hinweisen eine zusätzliche
+Prüfmarkierung für mögliche vollständige Personennamen ausgeben. Die
+Markierung erscheint in der Kommandozeile sowie in HTML- und PDF-Berichten.
+
+Die Markierung unterdrückt, entfernt oder verändert keinen Sprachhinweis.
+Auch ein fälschlich als Person erkannter englischer Ausdruck bleibt sichtbar.
+Sie dient ausschließlich dazu, die fachliche Prüfung und gegebenenfalls die
+Pflege bestätigter lokaler `ignored_terms` zu unterstützen.
+
 ## Datenschutz und lokale Verarbeitung
 
 Website-Texte, Crawl-Daten und Prüfergebnisse bleiben lokal. Das Werkzeug

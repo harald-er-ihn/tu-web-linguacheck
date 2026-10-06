@@ -111,8 +111,15 @@ def _finding_row(finding: Finding) -> str:
         f'<strong class="finding-badge">{escape(finding.category)}</strong>'
         f'<strong class="finding-badge">{escape(finding.severity)}</strong>'
     )
+    ner_person_hint = (
+        '<p class="finding-ner-hint">NER-Prüfmarkierung: möglicher '
+        f"Personenname „{escape(finding.ner_person_name)}“.</p>"
+        if finding.ner_person_name is not None
+        else ""
+    )
     finding_message = (
         f'{badges}{message}<p class="finding-rule">Regel: {source_rule_id}</p>'
+        f"{ner_person_hint}"
     )
 
     return f"""\
