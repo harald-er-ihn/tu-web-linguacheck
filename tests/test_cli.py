@@ -6,7 +6,11 @@ from urllib.error import HTTPError
 
 from typer.testing import CliRunner
 
-from tu_web_linguacheck.cli import _display_findings, app
+from tu_web_linguacheck.cli import (
+    _crawl_report_checked_urls,
+    _display_findings,
+    app,
+)
 from tu_web_linguacheck.config import CrawlConfig, ProjectConfig
 from tu_web_linguacheck.html_content import PageContent, TextBlock
 from tu_web_linguacheck.language_links import LanguageLink
@@ -391,6 +395,15 @@ def test_check_crawl_help_describes_missing_english_lang_only() -> None:
     assert 'lang="en-US"' in result.output
     assert "ausgezeichnet" in result.output
     assert "sind." in result.output
+
+
+def test_check_crawl_help_describes_show_pages_without_findings() -> None:
+    """Der Crawl-Check erklärt die Ausgabe leerer Berichtseiten."""
+    result = runner.invoke(app, ["check-crawl", "--help"])
+
+    assert result.exit_code == 0
+    assert "--show-pages-without-findings" in result.output
+    assert "Seiten ohne Funde" in result.output
 
 
 def test_version_displays_package_version(monkeypatch) -> None:
@@ -1801,10 +1814,7 @@ def test_check_crawl_writes_html_and_pdf_reports(monkeypatch, tmp_path) -> None:
                 "https://example.org/",
                 "generic-de",
                 "de-DE",
-                checked_urls=(
-                    "https://example.org/erste-seite/",
-                    "https://example.org/zweite-seite/",
-                ),
+                checked_urls=(),
                 command=(
                     "tu-web-linguacheck check-crawl https://example.org/ "
                     f"{config_path} --report {report_path} "
@@ -1830,10 +1840,7 @@ def test_check_crawl_writes_html_and_pdf_reports(monkeypatch, tmp_path) -> None:
                 "https://example.org/",
                 "generic-de",
                 "de-DE",
-                checked_urls=(
-                    "https://example.org/erste-seite/",
-                    "https://example.org/zweite-seite/",
-                ),
+                checked_urls=(),
                 command=(
                     "tu-web-linguacheck check-crawl https://example.org/ "
                     f"{config_path} --report {report_path} "
@@ -2476,4 +2483,45 @@ def test_check_crawl_marks_html_language_findings_with_ner_option(
     assert "Fundstelle: Saloua" in result.output
     assert (
         "NER-Prüfmarkierung: möglicher Personenname „Saloua Mohammed“." in result.output
+    )
+
+
+def test_crawl_report_checked_urls_includes_empty_pages_on_request() -> None:
+    """Der Opt-in führt auch gecrawlte Seiten ohne Funde im Bericht auf."""
+    pages = (
+        CrawledPage(
+            url="https://example.org/mit-fund/",
+            depth=0,
+            title="Mit Fund",
+            text="Test",
+        ),
+        CrawledPage(
+            url="https://example.org/ohne-fund/",
+            depth=1,
+            title="Ohne Fund",
+            text="Test",
+        ),
+    )
+    finding = Finding(
+        url=pages[0].url,
+        category="misspelling",
+        severity="warning",
+        message="Möglicher Rechtschreibfehler.",
+        offset=0,
+        length=4,
+        suggestions=(),
+        context="Test",
+        profile="generic-de",
+        source_rule_id="GERMAN_SPELLER_RULE",
+    )
+
+    checked_urls = _crawl_report_checked_urls(
+        pages,
+        [finding],
+        show_pages_without_findings=True,
+    )
+
+    assert checked_urls == (
+        "https://example.org/mit-fund/",
+        "https://example.org/ohne-fund/",
     )

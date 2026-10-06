@@ -548,6 +548,20 @@ def _ner_person_hint_command_parts(
     return ("--ner-person-hints",) if ner_person_hints else ()
 
 
+def _crawl_report_checked_urls(
+    pages: Sequence[CrawledPage],
+    findings: Sequence[Finding],
+    *,
+    show_pages_without_findings: bool,
+) -> tuple[str, ...]:
+    """Wählt Crawl-URLs für Berichte abhängig von der Leer-Seiten-Option aus."""
+    if show_pages_without_findings:
+        return tuple(page.url for page in pages)
+
+    finding_urls = {finding.url for finding in findings}
+    return tuple(page.url for page in pages if page.url in finding_urls)
+
+
 def _crawl_report_data(  # pylint: disable=too-many-arguments
     *,
     url: str,
@@ -555,6 +569,7 @@ def _crawl_report_data(  # pylint: disable=too-many-arguments
     stay_under_start_path: bool,
     missing_english_lang_only: bool,
     ner_person_hints: bool,
+    show_pages_without_findings: bool,
     report_path: Path | None,
     pdf_report_path: Path | None,
     config: ProjectConfig,
@@ -571,7 +586,11 @@ def _crawl_report_data(  # pylint: disable=too-many-arguments
             start_url=url,
             profile=config.profile,
             language=config.check.language,
-            checked_urls=tuple(page.url for page in pages),
+            checked_urls=_crawl_report_checked_urls(
+                pages,
+                findings,
+                show_pages_without_findings=show_pages_without_findings,
+            ),
             command=" ".join(
                 part
                 for part in (
@@ -627,6 +646,11 @@ def check_crawl(  # pylint: disable=too-many-arguments,too-many-positional-argum
             "lokale Eigennamenerkennung einen möglichen Personennamen erkennt."
         ),
     ),
+    show_pages_without_findings: bool = typer.Option(
+        False,
+        "--show-pages-without-findings",
+        help="Zeigt Seiten ohne Funde im Bericht an.",
+    ),
     report_path: Path | None = typer.Option(
         None,
         "--report",
@@ -671,6 +695,7 @@ def check_crawl(  # pylint: disable=too-many-arguments,too-many-positional-argum
         stay_under_start_path=stay_under_start_path,
         missing_english_lang_only=missing_english_lang_only,
         ner_person_hints=ner_person_hints,
+        show_pages_without_findings=show_pages_without_findings,
         report_path=report_path,
         pdf_report_path=pdf_report_path,
         config=config,
