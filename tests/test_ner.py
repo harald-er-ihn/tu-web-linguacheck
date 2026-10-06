@@ -45,6 +45,76 @@ def test_mark_html_language_findings_with_person_hints_keeps_finding() -> None:
     assert marked_finding.ner_person_name == "Saloua Mohammed"
 
 
+def test_mark_findings_marks_misspelling_within_person_entity(
+    monkeypatch,
+) -> None:
+    """Markiert einen Rechtschreibfund innerhalb einer Person additiv."""
+    text = "Saloua Mohammed ist Referentin."
+    finding = Finding(
+        url="https://example.org/",
+        category="misspelling",
+        severity="warning",
+        message="Möglicher Rechtschreibfehler.",
+        offset=0,
+        length=len("Saloua"),
+        suggestions=(),
+        context=text,
+        profile="tu-de",
+        source_rule_id="GERMAN_SPELLER_RULE",
+    )
+
+    monkeypatch.setattr(
+        ner,
+        "find_person_entity_spans",
+        lambda _text: ((0, len("Saloua Mohammed"), "Saloua Mohammed"),),
+    )
+
+    marked_findings = mark_html_language_findings_with_person_hints([finding])
+
+    assert len(marked_findings) == 1
+    marked_finding = marked_findings[0]
+    assert marked_finding.category == "misspelling"
+    assert marked_finding.source_rule_id == "GERMAN_SPELLER_RULE"
+    assert marked_finding.offset == 0
+    assert marked_finding.length == len("Saloua")
+    assert marked_finding.ner_person_name == "Saloua Mohammed"
+
+
+def test_mark_findings_does_not_mark_misspelling_outside_person_entity(
+    monkeypatch,
+) -> None:
+    """Markiert keinen Rechtschreibfund außerhalb einer erkannten Person."""
+    text = "Saloua Mohammed ist Referentin."
+    finding = Finding(
+        url="https://example.org/",
+        category="misspelling",
+        severity="warning",
+        message="Möglicher Rechtschreibfehler.",
+        offset=text.index("Referentin"),
+        length=len("Referentin"),
+        suggestions=(),
+        context=text,
+        profile="tu-de",
+        source_rule_id="GERMAN_SPELLER_RULE",
+    )
+
+    monkeypatch.setattr(
+        ner,
+        "find_person_entity_spans",
+        lambda _text: ((0, len("Saloua Mohammed"), "Saloua Mohammed"),),
+    )
+
+    marked_findings = mark_html_language_findings_with_person_hints([finding])
+
+    assert len(marked_findings) == 1
+    marked_finding = marked_findings[0]
+    assert marked_finding.category == "misspelling"
+    assert marked_finding.source_rule_id == "GERMAN_SPELLER_RULE"
+    assert marked_finding.offset == text.index("Referentin")
+    assert marked_finding.length == len("Referentin")
+    assert marked_finding.ner_person_name is None
+
+
 def test_mark_html_language_findings_keeps_false_person_hint_visible() -> None:
     """Behält auch einen fälschlich als Person markierten Sprachhinweis."""
     text = "Distract (Ablenken)"

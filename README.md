@@ -72,11 +72,12 @@ Eigennamen, Abkürzungen und mehrdeutige Begriffe können weiterhin als
 englischsprachige Textspanne erkannt werden.
 
 Mit `--ner-person-hints` ergänzt das lokal ausgeführte spaCy-Modell
-`de_core_news_lg` bei `HTML_LANGUAGE`-Hinweisen eine Prüfmarkierung für
-mögliche vollständige Personennamen. Die Markierung ist ausschließlich
-additiv: Der ursprüngliche Hinweis bleibt sichtbar und wird weder verändert
-noch automatisch unterdrückt. Sie unterstützt die redaktionelle Prüfung und
-ersetzt keine fachlich bestätigten lokalen Ausnahmen in `ignored_terms`.
+`de_core_news_lg` bei bestehenden `HTML_LANGUAGE`- und Rechtschreib-Funden
+eine Prüfmarkierung für mögliche vollständige Personennamen. Die Markierung
+ist ausschließlich additiv: Der ursprüngliche Fund bleibt sichtbar und wird
+weder verändert noch automatisch unterdrückt. Sie unterstützt die
+redaktionelle Prüfung und ersetzt keine fachlich bestätigten lokalen Ausnahmen
+in `ignored_terms`.
 
 ## Architektur
 

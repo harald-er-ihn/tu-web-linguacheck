@@ -7,8 +7,7 @@ zur Evaluation lokaler Named-Entity-Recognition-Modelle für deutschsprachige
 Webinhalte.
 
 Die Stichprobe bewertet, ob ein Modell Personenentitäten erkennt. Sie ist keine
-produktive Prüfregel und unterdrückt keine LanguageTool- oder
-`HTML_LANGUAGE`-Funde.
+produktive Prüfregel und unterdrückt keine Prüffunde.
 
 Die Textauszüge stammen aus öffentlich sichtbaren Inhalten des praktischen
 CFV-Crawls. Sie wurden auf die für die Evaluation benötigten Kontexte begrenzt.

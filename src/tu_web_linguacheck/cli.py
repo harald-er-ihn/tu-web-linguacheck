@@ -293,8 +293,8 @@ def check_url(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         False,
         "--ner-person-hints",
         help=(
-            "Markiert HTML-Sprachhinweise zusätzlich, wenn die lokale "
-            "Eigennamenerkennung einen möglichen Personennamen erkennt."
+            "Markiert bestehende Sprach- und Rechtschreibfunde zusätzlich, wenn die "
+            "lokale Eigennamenerkennung einen möglichen Personennamen erkennt."
         ),
     ),
     report_path: Path | None = typer.Option(
@@ -623,8 +623,8 @@ def check_crawl(  # pylint: disable=too-many-arguments,too-many-positional-argum
         False,
         "--ner-person-hints",
         help=(
-            "Markiert HTML-Sprachhinweise zusätzlich, wenn die lokale "
-            "Eigennamenerkennung einen möglichen Personennamen erkennt."
+            "Markiert bestehende Sprach- und Rechtschreibfunde zusätzlich, wenn die "
+            "lokale Eigennamenerkennung einen möglichen Personennamen erkennt."
         ),
     ),
     report_path: Path | None = typer.Option(

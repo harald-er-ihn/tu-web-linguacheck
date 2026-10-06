@@ -27,12 +27,12 @@ def find_person_entity_spans(text: str) -> tuple[tuple[int, int, str], ...]:
 def mark_html_language_findings_with_person_hints(
     findings: Sequence[Finding],
 ) -> list[Finding]:
-    """Ergänzt HTML-Sprachhinweise innerhalb erkannter Personen additiv."""
+    """Ergänzt passende Sprach- und Rechtschreibfunde innerhalb von Personen."""
     marked_findings: list[Finding] = []
     entity_spans_by_context: dict[str, tuple[tuple[int, int, str], ...]] = {}
 
     for finding in findings:
-        if finding.category != "HTML_LANGUAGE":
+        if finding.category not in {"HTML_LANGUAGE", "misspelling"}:
             marked_findings.append(finding)
             continue
 

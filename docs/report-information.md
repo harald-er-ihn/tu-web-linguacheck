@@ -90,14 +90,15 @@ englischsprachig erkannt werden.
 ## Lokale NER-Prüfmarkierung für mögliche Personennamen
 
 Mit der Option `--ner-person-hints` kann die lokale Eigennamenerkennung
-`de_core_news_lg` bei `HTML_LANGUAGE`-Hinweisen eine zusätzliche
-Prüfmarkierung für mögliche vollständige Personennamen ausgeben. Die
-Markierung erscheint in der Kommandozeile sowie in HTML- und PDF-Berichten.
+`de_core_news_lg` bei bestehenden `HTML_LANGUAGE`- und Rechtschreib-Funden
+eine zusätzliche Prüfmarkierung für mögliche vollständige Personennamen
+ausgeben. Die Markierung erscheint in der Kommandozeile sowie in HTML- und
+PDF-Berichten.
 
-Die Markierung unterdrückt, entfernt oder verändert keinen Sprachhinweis.
-Auch ein fälschlich als Person erkannter englischer Ausdruck bleibt sichtbar.
-Sie dient ausschließlich dazu, die fachliche Prüfung und gegebenenfalls die
-Pflege bestätigter lokaler `ignored_terms` zu unterstützen.
+Die Markierung unterdrückt, entfernt oder verändert keinen Prüffund. Auch ein
+fälschlich als Person erkannter englischer Ausdruck oder Rechtschreib-Fund
+bleibt sichtbar. Sie dient ausschließlich dazu, die fachliche Prüfung und
+gegebenenfalls die Pflege bestätigter lokaler `ignored_terms` zu unterstützen.
 
 ## Datenschutz und lokale Verarbeitung
 
