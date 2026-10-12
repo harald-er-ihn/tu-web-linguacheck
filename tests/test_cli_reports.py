@@ -140,6 +140,60 @@ def test_check_url_writes_html_and_pdf_reports(monkeypatch, tmp_path) -> None:
     assert f"PDF-Bericht: {pdf_report_path}" in result.output
 
 
+def test_check_url_writes_default_pdf_report(monkeypatch, tmp_path) -> None:
+    """Der Einzelurl-Check schreibt ohne Option den Standard-PDF-Bericht."""
+    config_path = tmp_path / "config.yaml"
+    config = ProjectConfig(
+        profile="generic-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=0,
+            max_pages=1,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+    written_pdf_reports: list[Path] = []
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        lambda _path: config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.prepare_crawl_url",
+        lambda _url, _config: "https://example.org/",
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.fetch_html",
+        lambda _url, _domains: "<main>Ein Test.</main>",
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.extract_page_content",
+        lambda _html: PageContent(title="Testseite", text="Ein Test."),
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.LanguageToolClient.check",
+        lambda _self, **_kwargs: [],
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.write_pdf_report",
+        lambda path, **_kwargs: written_pdf_reports.append(path),
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-url",
+            "https://example.org/",
+            str(config_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert written_pdf_reports == [Path("reports/report.pdf")]
+    assert "PDF-Bericht: reports/report.pdf" in result.output
+
+
 def test_check_url_embeds_report_information(monkeypatch, tmp_path) -> None:
     """Der Einzelurl-Report enthält eingebettete Sprachbericht-Informationen."""
 

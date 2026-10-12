@@ -301,7 +301,9 @@ def check_url(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         None, "--report", help="Schreibt einen HTML-Bericht in die angegebene Datei."
     ),
     pdf_report_path: Path | None = typer.Option(
-        None, "--pdf-report", help="Schreibt einen PDF-Bericht in die angegebene Datei."
+        Path("reports/report.pdf"),
+        "--pdf-report",
+        help="Schreibt einen PDF-Bericht in die angegebene Datei.",
     ),
 ) -> None:
     """Prüft genau eine erlaubte HTML-Seite mit lokalem LanguageTool."""
