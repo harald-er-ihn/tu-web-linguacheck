@@ -659,7 +659,7 @@ def check_crawl(  # pylint: disable=too-many-arguments,too-many-positional-argum
         help="Schreibt einen HTML-Bericht in die angegebene Datei.",
     ),
     pdf_report_path: Path | None = typer.Option(
-        None,
+        Path("reports/report.pdf"),
         "--pdf-report",
         help="Schreibt einen PDF-Bericht in die angegebene Datei.",
     ),
