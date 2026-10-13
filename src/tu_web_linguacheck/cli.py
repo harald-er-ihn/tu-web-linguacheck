@@ -1009,7 +1009,7 @@ def check_translation_crawl(
         help="Schreibt einen HTML-Bericht in die angegebene Datei.",
     ),
     pdf_report_path: Path | None = typer.Option(
-        None,
+        Path("reports/report.pdf"),
         "--pdf-report",
         help="Schreibt einen PDF-Bericht in die angegebene Datei.",
     ),

@@ -2123,7 +2123,6 @@ def test_check_translation_crawl_checks_translation_targets_outside_german_path(
     source_url = "https://example.org/schuds/"
     target_url = "https://example.org/en/schuds/"
     captured_crawl_options: list[bool] = []
-    pdf_report_path = tmp_path / "translation-crawl-report.pdf"
     written_pdf_reports = []
     fetched_urls: list[str] = []
 
@@ -2183,8 +2182,6 @@ def test_check_translation_crawl_checks_translation_targets_outside_german_path(
             source_url,
             str(config_path),
             "--stay-under-start-path",
-            "--pdf-report",
-            str(pdf_report_path),
         ],
     )
 
@@ -2200,7 +2197,7 @@ def test_check_translation_crawl_checks_translation_targets_outside_german_path(
     assert report_context.command == (
         "tu-web-linguacheck check-translation-crawl "
         f"{source_url} {config_path} --stay-under-start-path "
-        f"--pdf-report {pdf_report_path}"
+        "--pdf-report reports/report.pdf"
     )
     assert report_context.config_path == str(config_path)
     assert report_context.allowed_domains == ("example.org",)
