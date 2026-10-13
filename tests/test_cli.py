@@ -2003,6 +2003,42 @@ def test_check_translation_rejects_target_outside_start_path(
     assert fetched_urls == [source_url]
 
 
+def test_check_translation_uses_default_config_path(monkeypatch) -> None:
+    """Der Übersetzungscheck nutzt ohne Pfadangabe die lokale Standardkonfiguration."""
+    loaded_paths: list[Path] = []
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=0,
+            max_pages=1,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+
+    def fake_load_project_config(path: Path) -> ProjectConfig:
+        loaded_paths.append(path)
+        return config
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        fake_load_project_config,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-translation",
+            "https://example.org/",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert loaded_paths == [Path("config/tu.local.yaml")]
+    assert "Für den Übersetzungscheck fehlt english_terminology_path." in result.output
+
+
 def test_check_url_forwards_stay_under_start_path(monkeypatch, tmp_path) -> None:
     """Der Einzelurl-Check leitet die Startpfadbegrenzung an den Abruf weiter."""
     config_path = tmp_path / "config.yaml"

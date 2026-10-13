@@ -1126,7 +1126,7 @@ def _translation_report_data(  # pylint: disable=too-many-arguments
 @app.command()
 def check_translation(  # pylint: disable=too-many-locals
     url: str,
-    config_path: Path,
+    config_path: Path = typer.Argument(Path("config/tu.local.yaml")),
     stay_under_start_path: bool = typer.Option(
         False,
         "--stay-under-start-path",
