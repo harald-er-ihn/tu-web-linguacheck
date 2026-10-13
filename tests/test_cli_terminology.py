@@ -323,7 +323,6 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
     config_path = tmp_path / "config.yaml"
     terminology_path = tmp_path / "tu-terminology.local.json"
     cfv_terminology_path = tmp_path / "cfv-terminology.local.json"
-    pdf_report_path = tmp_path / "translation-report.pdf"
     terminology_path.write_text(
         """\
 {
@@ -448,8 +447,6 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
             "check-translation",
             source_url,
             str(config_path),
-            "--pdf-report",
-            str(pdf_report_path),
         ],
     )
 
@@ -469,7 +466,7 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
 
     assert "Erwartete englische Übersetzung: TU Dortmund University" in result.output
     assert "Meldung: Nicht bevorzugte TU-Terminologie." in result.output
-    assert f"PDF-Bericht: {pdf_report_path}" in result.output
+    assert "PDF-Bericht: reports/report.pdf" in result.output
     assert written_pdf_reports
     assert (
         next(
@@ -488,7 +485,7 @@ def test_check_translation_reports_missing_english_term_and_writes_pdf(
     assert report_context.translation_uses_cfv_terminology is True
     assert report_context.command == (
         "tu-web-linguacheck check-translation "
-        f"{source_url} {config_path} --pdf-report {pdf_report_path}"
+        f"{source_url} {config_path} --pdf-report reports/report.pdf"
     )
     assert report_context.config_path == str(config_path)
     assert report_context.allowed_domains == ("example.org",)
