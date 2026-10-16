@@ -948,6 +948,46 @@ def test_check_url_checks_one_allowed_html_page(monkeypatch, tmp_path) -> None:
     assert "Fundstelle: istf" not in result.output
 
 
+def test_check_url_uses_default_config_path(monkeypatch) -> None:
+    """Der Einzelurl-Check nutzt ohne Pfadangabe die lokale Standardkonfiguration."""
+    loaded_paths: list[Path] = []
+    config = ProjectConfig(
+        profile="generic-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=0,
+            max_pages=1,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+
+    def fake_load_project_config(path: Path) -> ProjectConfig:
+        loaded_paths.append(path)
+        return config
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        fake_load_project_config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.prepare_crawl_url",
+        lambda _url, _crawl_config: None,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-url",
+            "https://example.org/",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert loaded_paths == [Path("config/tu.local.yaml")]
+    assert "URL ist gemäß Crawl-Konfiguration nicht erlaubt." in result.output
+
+
 def test_check_text_limits_long_context_to_match_surroundings(monkeypatch) -> None:
     """Der Check-Text-Befehl kürzt langen Kontext um die Fundstelle."""
     text = f"{'a' * 100}istf{'b' * 100}"

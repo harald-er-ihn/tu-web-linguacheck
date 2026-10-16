@@ -275,7 +275,7 @@ def _check_url_page_content(
 @app.command()
 def check_url(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     url: str,
-    config_path: Path,
+    config_path: Path = typer.Argument(Path("config/tu.local.yaml")),
     stay_under_start_path: bool = typer.Option(
         False,
         "--stay-under-start-path",
