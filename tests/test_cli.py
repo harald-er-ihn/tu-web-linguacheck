@@ -2291,6 +2291,42 @@ def test_check_translation_crawl_checks_translation_targets_outside_german_path(
     assert report_context.stay_under_start_path is True
 
 
+def test_check_translation_crawl_uses_default_config_path(monkeypatch) -> None:
+    """Der Übersetzungs-Crawl nutzt ohne Pfadangabe die lokale Standardkonfiguration."""
+    loaded_paths: list[Path] = []
+    config = ProjectConfig(
+        profile="tu-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=0,
+            max_pages=1,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+
+    def fake_load_project_config(path: Path) -> ProjectConfig:
+        loaded_paths.append(path)
+        return config
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        fake_load_project_config,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-translation-crawl",
+            "https://example.org/",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert loaded_paths == [Path("config/tu.local.yaml")]
+    assert "Für den Übersetzungscheck fehlt english_terminology_path." in result.output
+
+
 def test_check_translation_crawl_continues_after_english_fetch_error(
     monkeypatch,
     tmp_path,
