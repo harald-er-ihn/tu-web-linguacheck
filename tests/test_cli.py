@@ -1743,6 +1743,49 @@ def test_check_crawl_checks_languagetool_before_crawling(monkeypatch, tmp_path) 
     assert "Traceback" not in result.output
 
 
+def test_check_crawl_uses_default_config_path(monkeypatch) -> None:
+    """Der Crawl-Check nutzt ohne Pfadangabe die lokale Standardkonfiguration."""
+    loaded_paths: list[Path] = []
+    config = ProjectConfig(
+        profile="generic-de",
+        crawl=CrawlConfig(
+            allowed_domains=["example.org"],
+            max_depth=0,
+            max_pages=1,
+            requests_per_second=1.0,
+            obey_robots_txt=True,
+        ),
+    )
+
+    def fake_load_project_config(path: Path) -> ProjectConfig:
+        loaded_paths.append(path)
+        return config
+
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.load_project_config",
+        fake_load_project_config,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli._ensure_languagetool_available",
+        lambda _language: None,
+    )
+    monkeypatch.setattr(
+        "tu_web_linguacheck.cli.crawl_pages_with_content",
+        lambda **_kwargs: [],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "check-crawl",
+            "https://example.org/",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert loaded_paths == [Path("config/tu.local.yaml")]
+
+
 def test_check_crawl_writes_html_and_pdf_reports(monkeypatch, tmp_path) -> None:
     """Der Crawl-Check schreibt auf Wunsch HTML- und PDF-Berichte."""
 
